@@ -1,9 +1,14 @@
-// Minimal events proxy/normalizer with 90s in-memory cache (per lambda)
+// Events proxy with Vercel KV caching (5m TTL) + in-memory micro-cache (90s)
+import { kv } from "@vercel/kv";
+
 const PRIMARY_SOURCE = "https://api.hel.fi/linkedevents/v1/event/?page_size=1000";
 const FALLBACK_SOURCE = "https://open-api.myhelsinki.fi/v2/events/?limit=1000";
 
-let CACHE = { at: 0, json: null }; // cache per running instance
-const TTL_MS = 90 * 1000;
+const KV_KEY = "events:myhelsinki:v2";
+const KV_TTL_SEC = 300; // 5 minutes
+
+let CACHE = { at: 0, json: null }; // in-memory micro-cache per running instance
+const TTL_MS = 90 * 1000; // 90 seconds
 
 function simplifyHelsinki(it) {
   // Simplify Helsinki Linked Events API format
@@ -85,45 +90,76 @@ export default async function handler(req, res) {
     const category = url.searchParams.get("category");
 
     let payload;
+    
+    // Fast path: in-memory cache (90s micro-TTL)
     if (isFresh) {
       payload = CACHE.json;
     } else {
-      let all = [];
-      
-      // Try primary source (Helsinki Linked Events API)
+      // Try Vercel KV cache (5m TTL)
+      let kvPayload = null;
       try {
-        const r = await fetch(PRIMARY_SOURCE, { headers: { Accept: "application/json" } });
-        if (r.ok) {
-          const json = await r.json();
-          all = (json?.data ?? [])
-            .map(simplifyHelsinki)
-            .filter((e) => e.title && e.title !== "Event");
+        // Check if KV is available (env vars present)
+        if (process.env.KV_REST_API_URL) {
+          kvPayload = await kv.get(KV_KEY);
         }
       } catch (e) {
-        // Primary source failed, try fallback
+        // KV not available or failed, continue to fetch
       }
-      
-      // If primary failed or returned no results, try fallback
-      if (all.length === 0) {
+
+      if (kvPayload && kvPayload.updatedAt) {
+        // KV hit - use cached data
+        payload = kvPayload;
+        CACHE = { at: now, json: payload }; // Also populate in-memory cache
+      } else {
+        // KV miss or unavailable - fetch from upstream
+        let all = [];
+        
+        // Try primary source (Helsinki Linked Events API)
         try {
-          const r = await fetch(FALLBACK_SOURCE, { headers: { Accept: "application/json" } });
+          const r = await fetch(PRIMARY_SOURCE, { headers: { Accept: "application/json" } });
           if (r.ok) {
             const json = await r.json();
             all = (json?.data ?? [])
-              .map(simplifyMyHelsinki)
-              .filter((e) => typeof e.lat === "number" && typeof e.lng === "number");
+              .map(simplifyHelsinki)
+              .filter((e) => e.title && e.title !== "Event");
           }
         } catch (e) {
-          // Both sources failed
+          // Primary source failed, try fallback
+        }
+        
+        // If primary failed or returned no results, try fallback
+        if (all.length === 0) {
+          try {
+            const r = await fetch(FALLBACK_SOURCE, { headers: { Accept: "application/json" } });
+            if (r.ok) {
+              const json = await r.json();
+              all = (json?.data ?? [])
+                .map(simplifyMyHelsinki)
+                .filter((e) => typeof e.lat === "number" && typeof e.lng === "number");
+            }
+          } catch (e) {
+            // Both sources failed
+          }
+        }
+        
+        if (all.length === 0) {
+          throw new Error("No events available from any source");
+        }
+        
+        payload = { updatedAt: new Date().toISOString(), count: all.length, data: all };
+        CACHE = { at: now, json: payload };
+        
+        // Store in KV with 5m TTL (fire and forget - don't block response)
+        try {
+          if (process.env.KV_REST_API_URL) {
+            kv.set(KV_KEY, payload, { ex: KV_TTL_SEC }).catch(() => {
+              // Silently ignore KV write errors
+            });
+          }
+        } catch (e) {
+          // KV not available, continue without it
         }
       }
-      
-      if (all.length === 0) {
-        throw new Error("No events available from any source");
-      }
-      
-      payload = { updatedAt: new Date().toISOString(), count: all.length, data: all };
-      CACHE = { at: now, json: payload };
     }
 
     let out = payload.data;
