@@ -170,10 +170,13 @@ export default async function handler(req, res) {
     if (category) out = out.filter((e) => e.category === category);
     if (hasBBox) {
       const [minLon, minLat, maxLon, maxLat] = bbox;
-      out = out.filter(e => 
-        e.lng >= minLon && e.lng <= maxLon && 
-        e.lat >= minLat && e.lat <= maxLat
-      );
+      out = out.filter(e => {
+        // Include events without coordinates when bbox is provided
+        // This allows events to show up even if they don't have exact location data
+        if (e.lng === null || e.lat === null) return true;
+        return e.lng >= minLon && e.lng <= maxLon && 
+               e.lat >= minLat && e.lat <= maxLat;
+      });
     }
     out = out.slice(0, limit);
 
