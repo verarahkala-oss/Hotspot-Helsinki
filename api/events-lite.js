@@ -1,10 +1,47 @@
 // Minimal events proxy/normalizer with 90s in-memory cache (per lambda)
-const SOURCE = "https://open-api.myhelsinki.fi/v2/events/?limit=1000";
+const PRIMARY_SOURCE = "https://api.hel.fi/linkedevents/v1/event/?page_size=1000";
+const FALLBACK_SOURCE = "https://open-api.myhelsinki.fi/v2/events/?limit=1000";
 
 let CACHE = { at: 0, json: null }; // cache per running instance
 const TTL_MS = 90 * 1000;
 
-function simplify(it) {
+function simplifyHelsinki(it) {
+  // Simplify Helsinki Linked Events API format
+  const title = it?.name?.fi || it?.name?.en || "Event";
+  const loc = it?.location ?? {};
+  const offers = it?.offers ?? [];
+  const isFree = offers[0]?.is_free ? "free" : "paid";
+  const start = it?.start_time ? new Date(it.start_time).toISOString().split('T')[0] : "";
+  const website = it?.info_url?.fi || it?.info_url?.en || (offers[0]?.url ?? null);
+  const keywords = (it?.keywords ?? []).map((k) => (k?.name?.fi || k?.name?.en || "").toLowerCase());
+  const tagText = keywords.join(" ");
+  let category = "other";
+  if (/(music|musiikki)/.test(tagText)) category = "music";
+  else if (/(food|ruoka|restaurant|ravintola|street food)/.test(tagText)) category = "food";
+  else if (/(sport|urheilu|game|ottelu|marathon|juoksu)/.test(tagText)) category = "sports";
+  else if (/(family|perhe|kids|lapset)/.test(tagText)) category = "family";
+
+  // Extract coordinates from location URL if available
+  let lat = null, lng = null;
+  if (loc["@id"]) {
+    // Location is a reference, coordinates would need separate API call
+    // For now, we'll skip events without direct coordinates
+  }
+
+  return {
+    id: "hel_" + it.id,
+    title,
+    time: start,
+    lat,
+    lng,
+    category,
+    price: isFree,
+    website,
+  };
+}
+
+function simplifyMyHelsinki(it) {
+  // Original MyHelsinki format
   const title = it?.name?.fi || it?.name?.en || "Event";
   const loc = it?.location ?? {};
   const offers = it?.offers ?? [];
@@ -51,12 +88,40 @@ export default async function handler(req, res) {
     if (isFresh) {
       payload = CACHE.json;
     } else {
-      const r = await fetch(SOURCE, { headers: { Accept: "application/json" } });
-      if (!r.ok) throw new Error(`Upstream HTTP ${r.status}`);
-      const json = await r.json();
-      const all = (json?.data ?? [])
-        .map(simplify)
-        .filter((e) => typeof e.lat === "number" && typeof e.lng === "number");
+      let all = [];
+      
+      // Try primary source (Helsinki Linked Events API)
+      try {
+        const r = await fetch(PRIMARY_SOURCE, { headers: { Accept: "application/json" } });
+        if (r.ok) {
+          const json = await r.json();
+          all = (json?.data ?? [])
+            .map(simplifyHelsinki)
+            .filter((e) => e.title && e.title !== "Event");
+        }
+      } catch (e) {
+        // Primary source failed, try fallback
+      }
+      
+      // If primary failed or returned no results, try fallback
+      if (all.length === 0) {
+        try {
+          const r = await fetch(FALLBACK_SOURCE, { headers: { Accept: "application/json" } });
+          if (r.ok) {
+            const json = await r.json();
+            all = (json?.data ?? [])
+              .map(simplifyMyHelsinki)
+              .filter((e) => typeof e.lat === "number" && typeof e.lng === "number");
+          }
+        } catch (e) {
+          // Both sources failed
+        }
+      }
+      
+      if (all.length === 0) {
+        throw new Error("No events available from any source");
+      }
+      
       payload = { updatedAt: new Date().toISOString(), count: all.length, data: all };
       CACHE = { at: now, json: payload };
     }
