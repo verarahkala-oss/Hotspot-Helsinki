@@ -34,10 +34,12 @@ export default function App() {
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {data.map((event: any, index: number) => {
-              const name = event.name?.fi || event.name?.en || "Unnamed Event";
-              const startDate = event.event_dates?.starting_day;
-              const isFree = event.offers?.[0]?.is_free || false;
-              const eventUrl = event.info_url || event.offers?.[0]?.url || "#";
+              // Use the simplified API structure
+              const name = event.title || "Unnamed Event";
+              const startDate = event.time;
+              const isFree = event.price === "free";
+              const eventUrl = event.website || "#";
+              const category = event.category || "other";
 
               return (
                 <div 
@@ -62,6 +64,9 @@ export default function App() {
                     )}
                     <div style={{ marginBottom: 4 }}>
                       💰 <strong>Entry:</strong> {isFree ? "Free" : "Paid"}
+                    </div>
+                    <div style={{ marginBottom: 4 }}>
+                      🏷️ <strong>Category:</strong> {category}
                     </div>
                   </div>
 

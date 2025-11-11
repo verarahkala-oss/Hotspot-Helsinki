@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "./constants";
 
 interface EventData {
+  updatedAt: string;
+  count: number;
   data: any[];
-  meta?: any;
-  _meta?: any;
   error?: string;
 }
 
@@ -24,13 +25,13 @@ export function useEvents(): UseEventsResult {
         setLoading(true);
         setError(null);
         
-        const response = await fetch("/api/events-lite");
+        const res = await fetch(`${API_BASE_URL}?limit=400`);
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
         }
         
-        const json: EventData = await response.json();
+        const json: EventData = await res.json();
         
         // Check if there's an error in the response
         if (json.error) {

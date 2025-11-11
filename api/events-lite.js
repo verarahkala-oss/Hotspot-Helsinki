@@ -1,57 +1,77 @@
-// api/events-lite.js
-export const config = { runtime: "edge" }; // Vercel Edge function
+// Minimal events proxy/normalizer with 90s in-memory cache (per lambda)
+const SOURCE = "https://open-api.myhelsinki.fi/v2/events/?limit=1000";
 
-export default async function handler(req) {
-  const { searchParams } = new URL(req.url);
-  const limit = searchParams.get("limit") || "200";
+let CACHE = { at: 0, json: null }; // cache per running instance
+const TTL_MS = 90 * 1000;
 
-  // Use the working Helsinki Linked Events API
-  const direct = `https://api.hel.fi/linkedevents/v1/event/?page_size=${limit}`;
-  const fallback = `https://open-api.myhelsinki.fi/v2/events/?limit=${limit}`;
+function simplify(it) {
+  const title = it?.name?.fi || it?.name?.en || "Event";
+  const loc = it?.location ?? {};
+  const offers = it?.offers ?? [];
+  const isFree = offers[0]?.is_free ? "free" : "paid";
+  const start = it?.event_dates?.starting_day || "";
+  const website = it?.info_url || (offers[0]?.url ?? null);
+  const tags = (it?.tags ?? []).map((t) => (t?.name || "").toLowerCase());
+  const tagText = tags.join(" ");
+  let category = "other";
+  if (/(music|musiikki)/.test(tagText)) category = "music";
+  else if (/(food|ruoka|restaurant|ravintola|street food)/.test(tagText)) category = "food";
+  else if (/(sport|urheilu|game|ottelu|marathon|juoksu)/.test(tagText)) category = "sports";
+  else if (/(family|perhe|kids|lapset)/.test(tagText)) category = "family";
 
-  // Some mirrors return text; we’ll parse safely.
-  const tryParse = (t) => {
-    try { return JSON.parse(t); } catch {}
-    const a = t.indexOf("{"), b = t.lastIndexOf("}");
-    if (a !== -1 && b !== -1 && b > a) {
-      try { return JSON.parse(t.slice(a, b + 1)); } catch {}
-    }
-    return null;
+  return {
+    id: "myh_" + it.id,
+    title,
+    time: start,
+    lat: loc.lat,
+    lng: loc.lon,
+    category,
+    price: isFree,
+    website,
   };
+}
 
-  const candidates = [
-    { url: direct, expectsJson: true },
-    { url: fallback, expectsJson: true },
-  ];
+export default async function handler(req, res) {
+  try {
+    // CORS
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "*");
+    if (req.method === "OPTIONS") return res.status(204).end();
 
-  let json = null, used = null, status = 200;
+    const now = Date.now();
+    const isFresh = CACHE.json && now - CACHE.at < TTL_MS;
 
-  for (const c of candidates) {
-    try {
-      const r = await fetch(c.url, { headers: { Accept: "application/json" } });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      json = await r.json();
-      used = c.url;
-      break;
-    } catch (e) {
-      // try next candidate
+    const url = new URL(req.url, "https://dummy.local");
+    const limit = Math.max(1, Math.min(1000, Number(url.searchParams.get("limit")) || 300));
+    const q = (url.searchParams.get("q") || "").toLowerCase();
+    const price = url.searchParams.get("price");
+    const category = url.searchParams.get("category");
+
+    let payload;
+    if (isFresh) {
+      payload = CACHE.json;
+    } else {
+      const r = await fetch(SOURCE, { headers: { Accept: "application/json" } });
+      if (!r.ok) throw new Error(`Upstream HTTP ${r.status}`);
+      const json = await r.json();
+      const all = (json?.data ?? [])
+        .map(simplify)
+        .filter((e) => typeof e.lat === "number" && typeof e.lng === "number");
+      payload = { updatedAt: new Date().toISOString(), count: all.length, data: all };
+      CACHE = { at: now, json: payload };
     }
-  }
 
-  if (!json) {
-    status = 502;
-    json = { error: "All sources failed" };
-  } else {
-    // optional: annotate which source we used
-    json._meta = { via: used };
-  }
+    let out = payload.data;
+    if (q) out = out.filter((e) => e.title.toLowerCase().includes(q));
+    if (price) out = out.filter((e) => e.price === price);
+    if (category) out = out.filter((e) => e.category === category);
+    out = out.slice(0, limit);
 
-  return new Response(JSON.stringify(json), {
-    status,
-    headers: {
-      "content-type": "application/json",
-      "access-control-allow-origin": "*",
-      "access-control-allow-headers": "*",
-    },
-  });
+    res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=120");
+    return res.status(200).json({ updatedAt: payload.updatedAt, count: out.length, data: out });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: "events-lite failed", message: err?.message || String(err) });
+  }
 }
