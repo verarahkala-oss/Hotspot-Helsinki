@@ -6,10 +6,38 @@ export default function App() {
 
   return (
     <div style={{ padding: 24, fontFamily: "system-ui, sans-serif", maxWidth: 1200, margin: "0 auto" }}>
-      <h1>Hotspot Helsinki</h1>
-      <p style={{ color: "#666", marginBottom: 24 }}>Live events from MyHelsinki Open API</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div>
+          <h1 style={{ margin: 0 }}>Hotspot Helsinki</h1>
+          <p style={{ color: "#666", margin: "4px 0 0 0" }}>Live events from MyHelsinki Open API</p>
+        </div>
+        {loading && (
+          <div style={{ 
+            padding: "4px 12px", 
+            backgroundColor: "#e3f2fd", 
+            border: "1px solid #90caf9",
+            borderRadius: 4,
+            fontSize: 14,
+            color: "#1976d2"
+          }}>
+            Updating...
+          </div>
+        )}
+        {!loading && data && (
+          <div style={{ 
+            padding: "4px 12px", 
+            backgroundColor: "#e8f5e9", 
+            border: "1px solid #81c784",
+            borderRadius: 4,
+            fontSize: 14,
+            color: "#2e7d32"
+          }}>
+            Loaded {data.length} in view
+          </div>
+        )}
+      </div>
 
-      {loading && <p>Loading events...</p>}
+      {loading && !data && <p>Loading events...</p>}
       
       {error && (
         <div style={{ 
@@ -29,9 +57,6 @@ export default function App() {
 
       {data && data.length > 0 && (
         <div>
-          <p style={{ marginBottom: 16, fontWeight: 600 }}>
-            Found {data.length} events
-          </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {data.map((event: any, index: number) => {
               // Use the simplified API structure

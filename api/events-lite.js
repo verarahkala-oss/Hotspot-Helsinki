@@ -88,6 +88,8 @@ export default async function handler(req, res) {
     const q = (url.searchParams.get("q") || "").toLowerCase();
     const price = url.searchParams.get("price");
     const category = url.searchParams.get("category");
+    const bbox = (url.searchParams.get("bbox") || "").split(",").map(Number);
+    const hasBBox = bbox.length === 4 && bbox.every((n) => Number.isFinite(n));
 
     let payload;
     
@@ -166,6 +168,13 @@ export default async function handler(req, res) {
     if (q) out = out.filter((e) => e.title.toLowerCase().includes(q));
     if (price) out = out.filter((e) => e.price === price);
     if (category) out = out.filter((e) => e.category === category);
+    if (hasBBox) {
+      const [minLon, minLat, maxLon, maxLat] = bbox;
+      out = out.filter(e => 
+        e.lng >= minLon && e.lng <= maxLon && 
+        e.lat >= minLat && e.lat <= maxLat
+      );
+    }
     out = out.slice(0, limit);
 
     res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=120");

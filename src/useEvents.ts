@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "./constants";
+import { useDebounce } from "./hooks/useDebounce";
 
 interface EventData {
   updatedAt: string;
@@ -8,24 +9,66 @@ interface EventData {
   error?: string;
 }
 
+interface BBox {
+  minLon: number;
+  minLat: number;
+  maxLon: number;
+  maxLat: number;
+}
+
+interface UseEventsOptions {
+  bbox?: BBox;
+  category?: string;
+  price?: string;
+  q?: string;
+}
+
 interface UseEventsResult {
   data: any[] | null;
   loading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
-export function useEvents(): UseEventsResult {
+// Helsinki city center default bounds
+const HELSINKI_DEFAULT_BBOX: BBox = {
+  minLon: 24.85,
+  minLat: 60.15,
+  maxLon: 25.05,
+  maxLat: 60.25,
+};
+
+export function useEvents(options: UseEventsOptions = {}): UseEventsResult {
   const [data, setData] = useState<any[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Debounce bbox changes to avoid too many requests while panning
+  const debouncedBBox = useDebounce(options.bbox, 500);
 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        const res = await fetch(`${API_BASE_URL}?limit=400`);
+
+        // Build query params
+        const params = new URLSearchParams();
+        params.set("limit", "400");
+
+        // Add bbox if provided, otherwise use Helsinki default
+        const bbox = debouncedBBox || HELSINKI_DEFAULT_BBOX;
+        const bboxStr = `${bbox.minLon},${bbox.minLat},${bbox.maxLon},${bbox.maxLat}`;
+        params.set("bbox", bboxStr);
+
+        // Add optional filters
+        if (options.category) params.set("category", options.category);
+        if (options.price) params.set("price", options.price);
+        if (options.q) params.set("q", options.q);
+
+        const url = `${API_BASE_URL}?${params.toString()}`;
+        const res = await fetch(url);
         
         if (!res.ok) {
           throw new Error("HTTP " + res.status);
@@ -49,7 +92,9 @@ export function useEvents(): UseEventsResult {
     };
 
     fetchEvents();
-  }, []);
+  }, [debouncedBBox, options.category, options.price, options.q, refreshTrigger]);
 
-  return { data, loading, error };
+  const refetch = () => setRefreshTrigger(prev => prev + 1);
+
+  return { data, loading, error, refetch };
 }
