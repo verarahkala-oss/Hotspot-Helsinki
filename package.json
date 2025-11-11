@@ -8,7 +8,13 @@
     "build": "vite build",
     "preview": "vite preview"
   },
-  "keywords": ["helsinki", "events", "map", "react", "vite"],
+  "keywords": [
+    "helsinki",
+    "events",
+    "map",
+    "react",
+    "vite"
+  ],
   "author": "Vera Rahkala",
   "license": "ISC",
   "dependencies": {
@@ -18,6 +24,7 @@
   "devDependencies": {
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.2"
   }
