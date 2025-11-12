@@ -8,8 +8,8 @@ type EventLite = {
   id: string;
   title: string;
   time?: string;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   category: string;
   price: "free" | "paid";
   website?: string | null;

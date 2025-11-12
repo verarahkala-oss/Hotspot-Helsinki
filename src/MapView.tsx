@@ -5,8 +5,8 @@ import type { LeafletEvent } from "leaflet";
 type Ev = {
   id: string;
   title: string;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   category: string;
   price: "free" | "paid";
   time?: string;
@@ -46,29 +46,31 @@ export default function MapView({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <BoundsWatcher onChange={onBoundsChange} />
-      {events.map((ev) => (
-        <CircleMarker
-          key={ev.id}
-          center={[ev.lat, ev.lng] as any}
-          radius={6}
-          pathOptions={{ color: "#ff3b3b", fillColor: "#ff3b3b", fillOpacity: 0.9 }}
-        >
-          <Popup>
-            <div style={{ minWidth: 180 }}>
-              <strong>{ev.title}</strong>
-              <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-                {ev.category} • {ev.price}
-                {ev.time ? <> • {String(ev.time).slice(0, 16)}</> : null}
-              </div>
-              {ev.website && (
-                <div style={{ marginTop: 6 }}>
-                  <a href={ev.website} target="_blank" rel="noreferrer">Open</a>
+      {events
+        .filter((ev) => ev.lat !== null && ev.lng !== null)
+        .map((ev) => (
+          <CircleMarker
+            key={ev.id}
+            center={[ev.lat!, ev.lng!] as any}
+            radius={6}
+            pathOptions={{ color: "#ff3b3b", fillColor: "#ff3b3b", fillOpacity: 0.9 }}
+          >
+            <Popup>
+              <div style={{ minWidth: 180 }}>
+                <strong>{ev.title}</strong>
+                <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                  {ev.category} • {ev.price}
+                  {ev.time ? <> • {String(ev.time).slice(0, 16)}</> : null}
                 </div>
-              )}
-            </div>
-          </Popup>
-        </CircleMarker>
-      ))}
+                {ev.website && (
+                  <div style={{ marginTop: 6 }}>
+                    <a href={ev.website} target="_blank" rel="noreferrer">Open</a>
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
     </MapContainer>
   );
 }
