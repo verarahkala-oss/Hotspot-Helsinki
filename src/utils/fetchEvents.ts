@@ -123,16 +123,24 @@ export async function fetchEvents(): Promise<LinkedEvent[]> {
                         event.keywords?.[0]?.name?.fi || 
                         'Event';
         
-        // Format time display in Helsinki timezone
+        // Format time display as duration (start - end time only)
         const startDate = new Date(event.start_time);
-        const time = startDate.toLocaleString('fi-FI', {
+        const startTime = startDate.toLocaleString('fi-FI', {
           timeZone: 'Europe/Helsinki',
-          day: 'numeric',
-          month: 'numeric',
-          year: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
         });
+        
+        let time = startTime;
+        if (event.end_time) {
+          const endDate = new Date(event.end_time);
+          const endTime = endDate.toLocaleString('fi-FI', {
+            timeZone: 'Europe/Helsinki',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          time = `${startTime} - ${endTime}`;
+        }
 
         return {
           id: event.id,
