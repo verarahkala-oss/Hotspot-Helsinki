@@ -24,6 +24,7 @@ export default function App() {
   const [price, setPrice] = useState<"" | "free" | "paid">("");
   const [category, setCategory] = useState<"" | "music" | "food" | "sports" | "family" | "other">("");
   const [bounds, setBounds] = useState<Bounds | null>(null);
+  const [themeOverride, setThemeOverride] = useState<"light" | "dark" | undefined>(undefined);
   const debouncedBounds = useDebounce(bounds, 500);
 
   const url = useMemo(() => {
@@ -82,6 +83,14 @@ export default function App() {
           <option value="family">Family</option>
           <option value="other">Other</option>
         </select>
+        <select value={themeOverride ?? ""} onChange={(e) => {
+          const v = e.target.value as "" | "light" | "dark";
+          setThemeOverride(v || undefined);
+        }} style={{ padding: 8, borderRadius: 8 }}>
+          <option value="">Theme: System</option>
+          <option value="light">Theme: Light</option>
+          <option value="dark">Theme: Dark</option>
+        </select>
         <button onClick={() => { setQuery(""); setPrice(""); setCategory(""); }} style={{ padding: "8px 12px", borderRadius: 8 }}>
           Reset
         </button>
@@ -91,7 +100,7 @@ export default function App() {
         {error ? `Failed to load: ${error}` : loading ? "Loading…" : `Loaded ${events.length} in view`}
       </div>
 
-      <MapGL events={events} onBoundsChange={setBounds} center={[24.9384, 60.1699]} zoom={12} />
+      <MapGL events={events} onBoundsChange={setBounds} center={[24.9384, 60.1699]} zoom={12} themeOverride={themeOverride} />
 
       <ul style={{ listStyle: "none", padding: 0, marginTop: 12, display: "grid", gap: 8 }}>
         {events.slice(0, 20).map((ev) => (

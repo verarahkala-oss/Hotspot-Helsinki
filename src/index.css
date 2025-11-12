@@ -1,6 +1,23 @@
 /* Apple-like styling for MapLibre controls and page */
 :root { 
+  color: #222; 
+  background: #fff; 
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { 
+    color: #eaeaea; 
+    background: #0b0b0f; 
+  }
+  a { 
+    color: #8ab4ff; 
+  }
+  input, select, button {
+    background: #1a1a20;
+    color: #eaeaea;
+    border-color: #333;
+  }
 }
 
 .maplibregl-ctrl-group { 
