@@ -247,6 +247,20 @@ const MapGL = forwardRef<MapGLHandle, {
     geolocateRef.current = geoControl;
     map.addControl(geoControl, "top-right");
 
+    // Add event listeners for debugging
+    geoControl.on('geolocate', (e: any) => {
+      console.log('GeolocateControl: position obtained', e.coords);
+    });
+    geoControl.on('error', (e: any) => {
+      console.error('GeolocateControl: error', e);
+    });
+    geoControl.on('trackuserlocationstart', () => {
+      console.log('GeolocateControl: tracking started');
+    });
+    geoControl.on('trackuserlocationend', () => {
+      console.log('GeolocateControl: tracking ended');
+    });
+
     // Track if we've triggered geolocation once
     let geoTriggered = false;
 
@@ -255,7 +269,12 @@ const MapGL = forwardRef<MapGLHandle, {
       if (!geoTriggered && geolocateRef.current) {
         geoTriggered = true;
         console.log('Triggering geolocation request');
-        geolocateRef.current.trigger();
+        // Delay trigger to ensure map is fully loaded
+        setTimeout(() => {
+          if (geolocateRef.current) {
+            geolocateRef.current.trigger();
+          }
+        }, 500);
       }
       
       // Clustering source

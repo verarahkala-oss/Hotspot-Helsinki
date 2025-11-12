@@ -80,9 +80,9 @@ export async function fetchEvents(): Promise<LinkedEvent[]> {
   try {
     // Fetch upcoming events (max 200) with location data
     const now = new Date().toISOString().split('T')[0];
-    const url = `https://api.hel.fi/linkedevents/v1/event/?page_size=200&start=gte:${now}&include=location&sort=start_time`;
+    const url = `https://api.hel.fi/linkedevents/v1/event/?page_size=200&start=${now}&include=location&sort=start_time`;
     
-    console.log('Fetching events from LinkedEvents API...');
+    console.log('Fetching events from LinkedEvents API...', url);
     const response = await fetch(url);
     
     if (!response.ok) {
@@ -123,11 +123,12 @@ export async function fetchEvents(): Promise<LinkedEvent[]> {
                         event.keywords?.[0]?.name?.fi || 
                         'Event';
         
-        // Format time display
+        // Format time display in Helsinki timezone
         const startDate = new Date(event.start_time);
-        const time = startDate.toLocaleString('en-GB', {
-          day: '2-digit',
-          month: '2-digit',
+        const time = startDate.toLocaleString('fi-FI', {
+          timeZone: 'Europe/Helsinki',
+          day: 'numeric',
+          month: 'numeric',
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
