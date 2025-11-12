@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import MapView from "./MapView";
+import MapGL from "./MapGL";
 import useDebounce from "./useDebounce";
 // If you have a constants file, import from there instead:
 const API_BASE_URL = "https://hotspot-helsinki.vercel.app/api/events-lite";
@@ -91,7 +91,7 @@ export default function App() {
         {error ? `Failed to load: ${error}` : loading ? "Loading…" : `Loaded ${events.length} in view`}
       </div>
 
-      <MapView events={events} onBoundsChange={setBounds} center={[60.1699, 24.9384]} zoom={12} />
+      <MapGL events={events} onBoundsChange={setBounds} center={[24.9384, 60.1699]} zoom={12} />
 
       <ul style={{ listStyle: "none", padding: 0, marginTop: 12, display: "grid", gap: 8 }}>
         {events.slice(0, 20).map((ev) => (

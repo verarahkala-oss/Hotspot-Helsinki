@@ -1,0 +1,26 @@
+/* Apple-like styling for MapLibre controls and page */
+:root { 
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.maplibregl-ctrl-group { 
+  border-radius: 12px; 
+  overflow: hidden; 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.maplibregl-ctrl-group button {
+  width: 32px;
+  height: 32px;
+}
+
+.maplibregl-popup-content {
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+}
+
+.maplibregl-popup-close-button {
+  font-size: 20px;
+  padding: 4px 8px;
+}
