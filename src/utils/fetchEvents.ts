@@ -135,8 +135,6 @@ export async function fetchEvents(): Promise<LinkedEvent[]> {
                         event.location?.name?.en ||
                         'Event';
         
-        console.log('Event category:', category); // Debug: see what categories we're getting
-        
         // Format time display as duration (start - end time only)
         const startDate = new Date(event.start_time);
         const startTime = startDate.toLocaleString('fi-FI', {

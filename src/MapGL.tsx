@@ -104,7 +104,7 @@ const MapGL = forwardRef<MapGLHandle, {
           <div style="min-width:220px">
             <strong>${ev.title}</strong>
             <div style="font-size:12px;color:#666;margin-top:4px">${ev.category} • ${ev.price}${ev.time ? " • " + String(ev.time).slice(0,16) : ""}</div>
-            ${ev.website ? `<div style="margin-top:6px"><a href="${ev.website}" target="_blank" rel="noreferrer">Open</a></div>` : ""}
+            ${ev.website ? `<div style="margin-top:6px"><a href="${ev.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
           </div>`;
         
         // Remove existing popup if any
@@ -409,15 +409,11 @@ const MapGL = forwardRef<MapGLHandle, {
         const p = f?.properties || {};
         const coords = (f?.geometry as any).coordinates;
         const badge = p.isLive ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` : "";
-        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${coords[1]},${coords[0]}`;
         const html = `
           <div style="min-width:220px">
             <strong>${p.title || "Event"}</strong>${badge}
             <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-            <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-              ${p.website ? `<a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">Event Info</a>` : ""}
-              <a href="${googleMapsUrl}" target="_blank" rel="noreferrer" style="color:#007aff">Venue Details</a>
-            </div>
+            ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
           </div>`;
         new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
         
@@ -434,15 +430,11 @@ const MapGL = forwardRef<MapGLHandle, {
         const p = f?.properties || {};
         const coords = (f?.geometry as any).coordinates;
         const badge = p.isLive ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` : "";
-        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${coords[1]},${coords[0]}`;
         const html = `
           <div style="min-width:220px">
             <strong>${p.title || "Event"}</strong>${badge}
             <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-            <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-              ${p.website ? `<a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">Event Info</a>` : ""}
-              <a href="${googleMapsUrl}" target="_blank" rel="noreferrer" style="color:#007aff">Venue Details</a>
-            </div>
+            ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
           </div>`;
         new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
         
@@ -458,15 +450,11 @@ const MapGL = forwardRef<MapGLHandle, {
         const p = f?.properties || {};
         const coords = (f?.geometry as any).coordinates;
         const badge = `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>`;
-        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${coords[1]},${coords[0]}`;
         const html = `
           <div style="min-width:220px">
             <strong>${p.title || "Event"}</strong>${badge}
             <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-            <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-              ${p.website ? `<a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">Event Info</a>` : ""}
-              <a href="${googleMapsUrl}" target="_blank" rel="noreferrer" style="color:#007aff">Venue Details</a>
-            </div>
+            ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
           </div>`;
         new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
         
@@ -593,16 +581,7 @@ const MapGL = forwardRef<MapGLHandle, {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.getSource("events")) return;
-    const featureCount = (geo as any).features?.length || 0;
-    console.log('Updating event data, count:', featureCount, 'Map style:', map.getStyle()?.name);
     (map.getSource("events") as any).setData(geo);
-    
-    // Debug: Check if layers exist
-    console.log('Layers present:', {
-      clusters: !!map.getLayer('clusters'),
-      unclustered: !!map.getLayer('unclustered'),
-      'unclustered-selected': !!map.getLayer('unclustered-selected')
-    });
   }, [geo]);
 
   // Handle manual theme override changes ONLY
@@ -762,7 +741,7 @@ const MapGL = forwardRef<MapGLHandle, {
             <div style="min-width:220px">
               <strong>${p.title || "Event"}</strong>${badge}
               <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-              ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer">Open</a></div>` : ""}
+              ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
             </div>`;
           new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
           
@@ -781,7 +760,7 @@ const MapGL = forwardRef<MapGLHandle, {
             <div style="min-width:220px">
               <strong>${p.title || "Event"}</strong>${badge}
               <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-              ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer">Open</a></div>` : ""}
+              ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
             </div>`;
           new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
           
@@ -800,7 +779,7 @@ const MapGL = forwardRef<MapGLHandle, {
             <div style="min-width:220px">
               <strong>${p.title || "Event"}</strong>${badge}
               <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-              ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer">Open</a></div>` : ""}
+              ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
             </div>`;
           new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
           
@@ -974,7 +953,7 @@ const MapGL = forwardRef<MapGLHandle, {
               <div style="min-width:220px">
                 <strong>${p.title || "Event"}</strong>${badge}
                 <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-                ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer">Open</a></div>` : ""}
+                ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
               </div>`;
             new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
             
@@ -993,7 +972,7 @@ const MapGL = forwardRef<MapGLHandle, {
               <div style="min-width:220px">
                 <strong>${p.title || "Event"}</strong>${badge}
                 <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-                ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer">Open</a></div>` : ""}
+                ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
               </div>`;
             new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
             
@@ -1012,7 +991,7 @@ const MapGL = forwardRef<MapGLHandle, {
               <div style="min-width:220px">
                 <strong>${p.title || "Event"}</strong>${badge}
                 <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-                ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer">Open</a></div>` : ""}
+                ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
               </div>`;
             new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
             
