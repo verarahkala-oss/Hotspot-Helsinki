@@ -91,6 +91,8 @@ export async function fetchEvents(): Promise<LinkedEvent[]> {
 
     const data: LinkedEventsResponse = await response.json();
     
+    const currentTime = Date.now();
+    
     // Transform and filter events
     const events: LinkedEvent[] = data.data
       .filter(event => {
@@ -102,6 +104,14 @@ export async function fetchEvents(): Promise<LinkedEvent[]> {
         
         // Must have start time
         if (!event.start_time) return false;
+        
+        // Filter out past events (if event has end time, check if it's in the future)
+        if (event.end_time) {
+          const endTime = new Date(event.end_time).getTime();
+          if (endTime < currentTime) {
+            return false; // Event has ended
+          }
+        }
         
         return true;
       })
@@ -118,10 +128,14 @@ export async function fetchEvents(): Promise<LinkedEvent[]> {
         const isFree = event.offers?.[0]?.is_free;
         const price: "free" | "paid" = isFree ? "free" : "paid";
         
-        // Get category from first keyword
+        // Get category from first keyword (or use a generic label)
         const category = event.keywords?.[0]?.name?.en || 
                         event.keywords?.[0]?.name?.fi || 
+                        event.location?.name?.fi ||
+                        event.location?.name?.en ||
                         'Event';
+        
+        console.log('Event category:', category); // Debug: see what categories we're getting
         
         // Format time display as duration (start - end time only)
         const startDate = new Date(event.start_time);

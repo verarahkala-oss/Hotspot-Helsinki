@@ -581,8 +581,16 @@ const MapGL = forwardRef<MapGLHandle, {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.getSource("events")) return;
-    console.log('Updating event data, count:', (geo as any).features?.length);
+    const featureCount = (geo as any).features?.length || 0;
+    console.log('Updating event data, count:', featureCount, 'Map style:', map.getStyle()?.name);
     (map.getSource("events") as any).setData(geo);
+    
+    // Debug: Check if layers exist
+    console.log('Layers present:', {
+      clusters: !!map.getLayer('clusters'),
+      unclustered: !!map.getLayer('unclustered'),
+      'unclustered-selected': !!map.getLayer('unclustered-selected')
+    });
   }, [geo]);
 
   // Handle manual theme override changes ONLY
@@ -616,7 +624,7 @@ const MapGL = forwardRef<MapGLHandle, {
       map.setStyle(newStyle);
     
       map.once("styledata", () => {
-        console.log('Style loaded, re-adding layers');
+        console.log('Style loaded, re-adding layers. Source exists:', !!map.getSource("events"), 'Data available:', !!data, 'Data features:', data?.features?.length);
         if (!map.getSource("events") && data) {
           map.addSource("events", { 
             type: "geojson", 
@@ -656,6 +664,7 @@ const MapGL = forwardRef<MapGLHandle, {
           }
           
           if (!map.getLayer("unclustered")) {
+            console.log('Adding unclustered layer in', isDark ? 'dark' : 'light', 'mode');
             map.addLayer({ 
               id: "unclustered", 
               type: "circle", 

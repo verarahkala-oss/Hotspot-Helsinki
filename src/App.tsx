@@ -46,7 +46,9 @@ export default function App() {
   // Fetch live events from LinkedEvents API on mount
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    
+    const fetchAndSetEvents = async () => {
+      if (cancelled) return;
       setLoading(true);
       setError(null);
       try {
@@ -63,8 +65,18 @@ export default function App() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
-    return () => { cancelled = true; };
+    };
+    
+    // Initial fetch
+    fetchAndSetEvents();
+    
+    // Refresh events every 10 minutes to remove past events and get new ones
+    const intervalId = setInterval(fetchAndSetEvents, 10 * 60 * 1000);
+    
+    return () => { 
+      cancelled = true;
+      clearInterval(intervalId);
+    };
   }, []); // Only run once on mount
 
   // Filter events by query, price, category, bounds, and LIVE status
@@ -140,6 +152,8 @@ export default function App() {
           <option value="free">Free</option>
           <option value="paid">Paid</option>
         </select>
+        {/* Category filter temporarily disabled - LinkedEvents uses different categorization */}
+        {/*
         <select value={category} onChange={(e) => setCategory(e.target.value as any)} style={{ padding: 8, borderRadius: 8 }}>
           <option value="">All categories</option>
           <option value="music">Music</option>
@@ -148,6 +162,7 @@ export default function App() {
           <option value="family">Family</option>
           <option value="other">Other</option>
         </select>
+        */}
         <select value={themeOverride ?? ""} onChange={(e) => {
           const v = e.target.value as "" | "light" | "dark";
           setThemeOverride(v || undefined);
