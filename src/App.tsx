@@ -1,21 +1,9 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import MapGL, { MapGLHandle } from "./MapGL";
 import useDebounce from "./useDebounce";
-// If you have a constants file, import from there instead:
-const API_BASE_URL = "https://hotspot-helsinki.vercel.app/api/events-lite";
+import { fetchEvents, type LinkedEvent } from "./utils/fetchEvents";
 
-type EventLite = {
-  id: string;
-  title: string;
-  time?: string;
-  lat: number | null;
-  lng: number | null;
-  category: string;
-  price: "free" | "paid";
-  website?: string | null;
-  start?: string;  // ISO date
-  end?: string;    // ISO date
-};
+type EventLite = LinkedEvent;
 type Bounds = { minLon: number; minLat: number; maxLon: number; maxLat: number };
 
 function isLiveNow(e: EventLite, now = Date.now()) {
@@ -24,6 +12,22 @@ function isLiveNow(e: EventLite, now = Date.now()) {
   const en = hasEnd ? Date.parse(e.end!) : (isFinite(s) ? s + 6*60*60*1000 : NaN); // +6h fallback
   return isFinite(s) && isFinite(en) && s <= now && now <= en;
 }
+
+// Fallback demo events in case API fails
+const DEMO_EVENTS: EventLite[] = [
+  {
+    id: "demo-1",
+    title: "Demo Event - Market Square",
+    start: new Date(Date.now() - 3600000).toISOString(),
+    end: new Date(Date.now() + 7200000).toISOString(),
+    lat: 60.1675,
+    lng: 24.9525,
+    category: "Market",
+    price: "free",
+    time: new Date().toLocaleString(),
+    website: "https://www.hel.fi"
+  }
+];
 
 export default function App() {
   const mapRef = useRef<MapGLHandle | null>(null);
@@ -39,44 +43,72 @@ export default function App() {
   const [onlyLive, setOnlyLive] = useState(false);
   const debouncedBounds = useDebounce(bounds, 500);
 
-  const url = useMemo(() => {
-    const p = new URLSearchParams();
-    p.set("limit", "500");
-    if (debouncedBounds) {
-      const { minLon, minLat, maxLon, maxLat } = debouncedBounds;
-      p.set("bbox", `${minLon},${minLat},${maxLon},${maxLat}`);
-    }
-    if (query) p.set("q", query);
-    if (price) p.set("price", price);
-    if (category) p.set("category", category);
-    return `${API_BASE_URL}?${p.toString()}`;
-  }, [debouncedBounds, query, price, category]);
-
+  // Fetch live events from LinkedEvents API on mount
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!cancelled) setEvents(json?.data ?? []);
+        const liveEvents = await fetchEvents();
+        if (!cancelled) {
+          setEvents(liveEvents);
+        }
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Network");
+        console.error("Failed to fetch events, using demo data:", e);
+        if (!cancelled) {
+          setError(e?.message || "Failed to load events");
+          setEvents(DEMO_EVENTS); // Fallback to demo events
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [url]);
+  }, []); // Only run once on mount
 
-  // Filter events by LIVE status if toggle is on
+  // Filter events by query, price, category, bounds, and LIVE status
   const filteredEvents = useMemo(() => {
-    if (!onlyLive) return events;
-    const now = Date.now();
-    return events.filter(e => isLiveNow(e, now));
-  }, [events, onlyLive]);
+    let filtered = events;
+    
+    // Filter by search query
+    if (query) {
+      const lowerQuery = query.toLowerCase();
+      filtered = filtered.filter(e => 
+        e.title.toLowerCase().includes(lowerQuery) ||
+        e.category.toLowerCase().includes(lowerQuery)
+      );
+    }
+    
+    // Filter by price
+    if (price) {
+      filtered = filtered.filter(e => e.price === price);
+    }
+    
+    // Filter by category
+    if (category) {
+      filtered = filtered.filter(e => 
+        e.category.toLowerCase().includes(category.toLowerCase())
+      );
+    }
+    
+    // Filter by bounds
+    if (debouncedBounds) {
+      const { minLon, minLat, maxLon, maxLat } = debouncedBounds;
+      filtered = filtered.filter(e => 
+        e.lng >= minLon && e.lng <= maxLon &&
+        e.lat >= minLat && e.lat <= maxLat
+      );
+    }
+    
+    // Filter by LIVE status if toggle is on
+    if (onlyLive) {
+      const now = Date.now();
+      filtered = filtered.filter(e => isLiveNow(e, now));
+    }
+    
+    return filtered;
+  }, [events, query, price, category, debouncedBounds, onlyLive]);
 
   const onRowClick = (id: string) => {
     setSelectedId(id);
@@ -143,9 +175,24 @@ export default function App() {
         </button>
       </div>
 
-      <div style={{ marginBottom: 8, color: error ? "#c00" : "#444" }}>
-        {error ? `Failed to load: ${error}` : loading ? "Loading…" : `Loaded ${filteredEvents.length} in view`}
+      <div style={{ marginBottom: 8, color: error ? "#c00" : "#444", display: "flex", alignItems: "center", gap: 8 }}>
+        {loading && <span style={{ 
+          display: "inline-block", 
+          width: 16, 
+          height: 16, 
+          border: "2px solid #ddd", 
+          borderTop: "2px solid #333",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite"
+        }} />}
+        {error ? `⚠️ ${error} (showing demo data)` : loading ? "Loading events from LinkedEvents API..." : `📍 ${filteredEvents.length} events in view`}
       </div>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
 
       <MapGL 
         ref={mapRef}
