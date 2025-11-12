@@ -41,3 +41,59 @@
   font-size: 20px;
   padding: 4px 8px;
 }
+
+/* --- Pulsing 'my location' marker (Apple-style) with heading cone --- */
+.pulse-pin {
+  position: relative;
+  width: 22px;   /* a bit larger to fit cone */
+  height: 22px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.pulse-pin .cone {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -60%) rotate(0deg); /* rotated in JS */
+  transform-origin: 50% 70%;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 16px solid rgba(30,144,255,0.45); /* iOS blue, semi */
+  filter: drop-shadow(0 0 1px rgba(0,0,0,0.25));
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  opacity: 0; /* hidden until heading is available */
+  z-index: 3;
+}
+
+.pulse-pin .dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #1e90ff;            /* iOS blue */
+  box-shadow: 0 0 0 2px #ffffff;  /* white ring like Apple */
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.pulse-pin .ring {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(30,144,255,0.25);
+  animation: pulse 1.8s ease-out infinite;
+  will-change: transform, opacity;
+  z-index: 1;
+}
+
+@keyframes pulse {
+  0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.7; }
+  70%  { transform: translate(-50%, -50%) scale(2.6); opacity: 0.0; }
+  100% { transform: translate(-50%, -50%) scale(2.6); opacity: 0.0; }
+}
