@@ -246,6 +246,34 @@ async function fetchLinkedEvents(bounds) {
       const offers = item.offers || [];
       const priceType = offers.some(o => o.is_free) ? "free" : "paid";
       
+      // Extract ticket information from offers
+      let ticketUrl = null;
+      let ticketPrice = null;
+      let ticketInfo = null;
+      
+      if (offers.length > 0) {
+        const offer = offers[0];
+        ticketUrl = offer.info_url?.fi || offer.info_url?.en || null;
+        
+        // Get price information
+        if (offer.price?.fi) {
+          ticketPrice = offer.price.fi;
+        } else if (offer.price?.en) {
+          ticketPrice = offer.price.en;
+        }
+        
+        // Get additional info
+        if (offer.description?.fi) {
+          ticketInfo = offer.description.fi;
+        } else if (offer.description?.en) {
+          ticketInfo = offer.description.en;
+        }
+      }
+      
+      // Try to get registration info for attendee count
+      const audienceMaxSize = item.audience_max_age || null;
+      const registrationUrl = item.registration?.signup_url || null;
+      
       events.push({
         id: `linkedevents_${item.id}`,
         source: "linkedevents",
@@ -259,10 +287,15 @@ async function fetchLinkedEvents(bounds) {
         city: "Helsinki",
         category: normalizeCategory(keywords),
         priceType,
-        url: item.info_url?.fi || item.info_url?.en || offers[0]?.url || null,
+        url: item.info_url?.fi || item.info_url?.en || ticketUrl || null,
         imageUrl: item.images?.[0]?.url || null,
         isLiveNow: false, // Will be computed later
-        score: 0 // Will be computed later
+        score: 0, // Will be computed later
+        ticketUrl: ticketUrl || registrationUrl || item.info_url?.fi || item.info_url?.en || null,
+        ticketPrice: ticketPrice,
+        ticketInfo: ticketInfo,
+        maxAttendees: item.maximum_attendee_capacity || null,
+        currentAttendees: item.enrolment_count || null
       });
     }
     
@@ -354,6 +387,18 @@ async function fetchMyHelsinkiEvents(bounds) {
       // Skip if no start date
       if (!startDay) continue;
       
+      // Extract ticket information
+      let ticketUrl = null;
+      let ticketPrice = null;
+      let ticketInfo = null;
+      
+      if (offers.length > 0) {
+        const offer = offers[0];
+        ticketUrl = offer.url || null;
+        ticketPrice = offer.price || null;
+        ticketInfo = offer.description || null;
+      }
+      
       events.push({
         id: `myhelsinki_${item.id}`,
         source: "myhelsinki",
@@ -367,10 +412,15 @@ async function fetchMyHelsinkiEvents(bounds) {
         city: loc.address?.locality || "Helsinki",
         category: normalizeCategory(tags),
         priceType,
-        url: item.info_url || offers[0]?.url || null,
+        url: item.info_url || ticketUrl || null,
         imageUrl: item.description?.images?.[0]?.url || null,
         isLiveNow: false,
-        score: 0
+        score: 0,
+        ticketUrl: ticketUrl || item.info_url || null,
+        ticketPrice: ticketPrice,
+        ticketInfo: ticketInfo,
+        maxAttendees: null,
+        currentAttendees: null
       });
     }
     

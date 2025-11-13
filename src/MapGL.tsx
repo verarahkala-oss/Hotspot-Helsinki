@@ -17,6 +17,11 @@ type Ev = {
   website?:string|null;
   start?: string;  // ISO date
   end?: string;    // ISO date
+  ticketUrl?: string | null;  // Direct link to purchase tickets
+  ticketPrice?: string | null;  // Price information from offers
+  ticketInfo?: string | null;  // Additional ticket details
+  maxAttendees?: number | null;  // Maximum capacity
+  currentAttendees?: number | null;  // Current registrations
 };
 type Bounds = { minLon:number; minLat:number; maxLon:number; maxLat:number };
 
@@ -83,7 +88,12 @@ function eventsToGeoJSON(events: Ev[], now = Date.now()) {
             website: e.website || "",
             isLive,
             score,
-            iconKey
+            iconKey,
+            ticketUrl: e.ticketUrl || null,
+            ticketPrice: e.ticketPrice || null,
+            ticketInfo: e.ticketInfo || null,
+            maxAttendees: e.maxAttendees || null,
+            currentAttendees: e.currentAttendees || null
           },
           geometry: { type: "Point", coordinates: [e.lng!, e.lat!] }
         };
@@ -151,6 +161,66 @@ const MapGL = forwardRef<MapGLHandle, {
     const formattedTime = formatEventTime(properties.time);
     const timeDisplay = formattedTime ? ` • ${formattedTime}` : "";
     
+    // Build ticket/attendance info
+    let ticketSection = "";
+    
+    // Show attendance if available
+    if (properties.maxAttendees !== null && properties.maxAttendees > 0) {
+      const current = properties.currentAttendees || 0;
+      const max = properties.maxAttendees;
+      const percentage = Math.round((current / max) * 100);
+      const spotsLeft = max - current;
+      
+      let attendanceColor = "#4CAF50"; // green
+      let attendanceText = `${current} / ${max} attendees`;
+      let urgencyBadge = "";
+      
+      if (percentage >= 100) {
+        attendanceColor = "#f44336"; // red
+        attendanceText = "Sold Out";
+        urgencyBadge = `<span style="background:#f44336;color:#fff;border-radius:6px;padding:2px 6px;font-size:10px;margin-left:6px;font-weight:600">FULL</span>`;
+      } else if (percentage >= 90) {
+        attendanceColor = "#ff9800"; // orange
+        attendanceText = `Only ${spotsLeft} spots left!`;
+        urgencyBadge = `<span style="background:#ff9800;color:#fff;border-radius:6px;padding:2px 6px;font-size:10px;margin-left:6px;font-weight:600">ALMOST FULL</span>`;
+      } else if (percentage >= 75) {
+        attendanceColor = "#ff9800"; // orange
+        attendanceText = `${spotsLeft} spots available`;
+        urgencyBadge = `<span style="background:#ffa726;color:#fff;border-radius:6px;padding:2px 6px;font-size:10px;margin-left:6px;font-weight:600">SELLING FAST</span>`;
+      }
+      
+      ticketSection += `<div style="margin-top:8px;padding:6px;background:#f5f5f5;border-radius:6px;font-size:12px">
+        <span style="color:${attendanceColor};font-weight:600">👥 ${attendanceText}</span>${urgencyBadge}
+      </div>`;
+    }
+    
+    // Show ticket price if available
+    if (properties.ticketPrice) {
+      ticketSection += `<div style="margin-top:6px;font-size:13px;color:#333">
+        <strong>💳 ${properties.ticketPrice}</strong>
+      </div>`;
+    }
+    
+    // Show ticket button if URL available
+    if (properties.ticketUrl) {
+      const isSoldOut = properties.maxAttendees && properties.currentAttendees >= properties.maxAttendees;
+      const buttonText = isSoldOut ? "View Event (Sold Out)" : "🎟️ Buy Tickets";
+      const buttonStyle = isSoldOut 
+        ? "background:#9e9e9e;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin-top:8px;font-size:13px;font-weight:600;cursor:not-allowed"
+        : "background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;display:inline-block;margin-top:8px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(102,126,234,0.3);transition:transform 0.2s";
+      
+      ticketSection += `<a href="${properties.ticketUrl}" target="_blank" rel="noreferrer" style="${buttonStyle}" ${isSoldOut ? '' : 'onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'"'}>
+        ${buttonText}
+      </a>`;
+    }
+    
+    // Show additional ticket info if available
+    if (properties.ticketInfo) {
+      ticketSection += `<div style="margin-top:6px;font-size:11px;color:#666;font-style:italic">
+        ${properties.ticketInfo}
+      </div>`;
+    }
+    
     // Create popup container
     const popupContainer = document.createElement("div");
     popupContainer.style.minWidth = "220px";
@@ -160,7 +230,8 @@ const MapGL = forwardRef<MapGLHandle, {
       <div>
         <strong>${properties.title || "Event"}</strong>${badge}
         <div style="font-size:12px;color:#666;margin-top:4px">${properties.category} • ${properties.price}${timeDisplay}</div>
-        ${properties.website ? `<div style="margin-top:6px"><a href="${properties.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
+        ${ticketSection}
+        ${properties.website && !properties.ticketUrl ? `<div style="margin-top:8px"><a href="${properties.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
       </div>
       <div id="venue-details-container"></div>
     `;
@@ -212,7 +283,12 @@ const MapGL = forwardRef<MapGLHandle, {
           price: ev.price,
           time: ev.time,
           website: ev.website,
-          isLive: isLiveNow(ev, Date.now())
+          isLive: isLiveNow(ev, Date.now()),
+          ticketUrl: ev.ticketUrl,
+          ticketPrice: ev.ticketPrice,
+          ticketInfo: ev.ticketInfo,
+          maxAttendees: ev.maxAttendees,
+          currentAttendees: ev.currentAttendees
         });
       }
       
