@@ -47,7 +47,19 @@ function isLiveNow(e: Ev, now = Date.now()) {
   const s = e.start ? Date.parse(e.start) : NaN;
   const hasEnd = !!e.end;
   const en = hasEnd ? Date.parse(e.end!) : (isFinite(s) ? s + 6*60*60*1000 : NaN); // +6h fallback
-  return isFinite(s) && isFinite(en) && s <= now && now <= en;
+  
+  // Check if event is currently happening
+  if (!isFinite(s) || !isFinite(en) || s > now || now > en) {
+    return false;
+  }
+  
+  // Don't mark events as LIVE if they span more than 12 hours (likely exhibitions or all-day venue events)
+  const durationHours = (en - s) / (1000 * 60 * 60);
+  if (durationHours > 12) {
+    return false;
+  }
+  
+  return true;
 }
 
 function eventsToGeoJSON(events: Ev[], now = Date.now()) {
