@@ -302,7 +302,7 @@ export default function App() {
           borderRadius: "50%",
           animation: "spin 1s linear infinite"
         }} />}
-        {error ? `⚠️ ${error} (showing demo data)` : loading ? "Loading events from LinkedEvents API..." : `📍 ${filteredEvents.length} events in view`}
+        {error ? `⚠️ ${error} (showing demo data)` : loading ? "Loading events from LinkedEvents API..." : `${filteredEvents.length} events in view`}
       </div>
 
       <style>{`

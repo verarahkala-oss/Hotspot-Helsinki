@@ -13,7 +13,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
   theater: createIconSVG("🎭", "#42a5f5"),
   gaming: createIconSVG("🎮", "#9c27b0"),
   festival: createIconSVG("🎉", "#ff3b3b"),
-  default: createIconSVG("📍", "#999999"),
+  default: createIconSVG("⭐", "#999999"),
 };
 
 function createIconSVG(emoji: string, color: string): string {
