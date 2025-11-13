@@ -384,6 +384,7 @@ export default function EventSidebar({
             </div>
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
+              {/* OPTIMIZATION: Render first 50 events for better performance */}
               {events.slice(0, 50).map((ev, index) => {
               const live = isLiveNow(ev);
               const isSelected = selectedId === ev.id;

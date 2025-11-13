@@ -19,6 +19,9 @@ const FILTER_OPTIONS = [
   { id: "family", label: "👨‍👩‍👧 Family", keywords: ["family", "kids", "children", "workshop"] },
 ];
 
+// OPTIMIZATION: Pre-compute filter lookup map for O(1) access
+const FILTER_MAP = new Map(FILTER_OPTIONS.map(opt => [opt.id, opt]));
+
 type EventLite = LinkedEvent;
 type Bounds = { minLon: number; minLat: number; maxLon: number; maxLat: number };
 
@@ -80,12 +83,12 @@ function scoreEvent(
   const categoryPrefScore = getCategoryPreferenceScore(event.category);
   score += categoryPrefScore;
   
-  // 4. CATEGORY MATCH - +200 points per matching filter
+  // 4. CATEGORY MATCH - +200 points per matching filter (OPTIMIZED: use Map lookup)
   if (activeFilters.size > 0) {
+    const searchText = `${event.category} ${event.title}`.toLowerCase();
     const matchCount = Array.from(activeFilters).filter(filterId => {
-      const filterOption = FILTER_OPTIONS.find(opt => opt.id === filterId);
+      const filterOption = FILTER_MAP.get(filterId);
       if (!filterOption) return false;
-      const searchText = `${event.category} ${event.title}`.toLowerCase();
       return filterOption.keywords.some(keyword => 
         searchText.includes(keyword.toLowerCase())
       );
@@ -147,17 +150,11 @@ export default function App() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [activeQuickFilters, setActiveQuickFilters] = useState<Set<QuickFilter>>(new Set());
   const [maxDistance, setMaxDistance] = useState<number>(100); // 100 = no limit
+  const [geolocationLoaded, setGeolocationLoaded] = useState(false);
+  // OPTIMIZATION: Debounce bounds to prevent excessive filtering during map pan/zoom
   const debouncedBounds = useDebounce(bounds, 500);
 
-  // Update current time every minute to refresh LIVE status
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(Date.now());
-    }, 60000); // Update every minute
-    return () => clearInterval(interval);
-  }, []);
-
-  // Track user location for scoring
+  // OPTIMIZATION: Preload user location ASAP for better initial positioning
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -166,12 +163,25 @@ export default function App() {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           });
+          setGeolocationLoaded(true);
         },
         (error) => {
           console.log("Geolocation not available:", error.message);
-        }
+          setGeolocationLoaded(true); // Mark as loaded even on error
+        },
+        { timeout: 5000, maximumAge: 300000 } // 5s timeout, 5min cache
       );
+    } else {
+      setGeolocationLoaded(true);
     }
+  }, []);
+
+  // Update current time every minute to refresh LIVE status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
   }, []);
 
   // Check if user has seen onboarding
