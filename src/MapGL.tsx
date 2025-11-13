@@ -225,13 +225,17 @@ const MapGL = forwardRef<MapGLHandle, {
     const popupContainer = document.createElement("div");
     popupContainer.style.minWidth = "220px";
     
+    // Make title clickable if website exists
+    const titleHtml = properties.website 
+      ? `<a href="${properties.website}" target="_blank" rel="noreferrer" style="color:inherit;text-decoration:none;border-bottom:2px solid #667eea;transition:color 0.2s" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='inherit'"><strong>${properties.title || "Event"}</strong></a>`
+      : `<strong>${properties.title || "Event"}</strong>`;
+    
     // Add static content
     popupContainer.innerHTML = `
       <div>
-        <strong>${properties.title || "Event"}</strong>${badge}
+        ${titleHtml}${badge}
         <div style="font-size:12px;color:#666;margin-top:4px">${properties.category} • ${properties.price}${timeDisplay}</div>
         ${ticketSection}
-        ${properties.website && !properties.ticketUrl ? `<div style="margin-top:8px"><a href="${properties.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
       </div>
       <div id="venue-details-container"></div>
     `;
