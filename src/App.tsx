@@ -60,7 +60,16 @@ export default function App() {
   const [heatmapMode, setHeatmapMode] = useState(false);
   const [show3DBuildings, setShow3DBuildings] = useState(true);
   const [distanceUnit, setDistanceUnit] = useState<"km" | "miles">("km");
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const debouncedBounds = useDebounce(bounds, 500);
+
+  // Update current time every minute to refresh LIVE status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   // Check if user has seen onboarding
   useEffect(() => {
@@ -175,12 +184,11 @@ export default function App() {
     
     // Filter by LIVE status if toggle is on
     if (onlyLive) {
-      const now = Date.now();
-      filtered = filtered.filter(e => isLiveNow(e, now));
+      filtered = filtered.filter(e => isLiveNow(e, currentTime));
     }
     
     return filtered;
-  }, [events, query, price, category, debouncedBounds, onlyLive, activeFilters]);
+  }, [events, query, price, category, debouncedBounds, onlyLive, activeFilters, currentTime]);
 
   const onRowClick = (id: string) => {
     setSelectedId(id);

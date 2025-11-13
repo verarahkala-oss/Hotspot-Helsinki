@@ -130,11 +130,20 @@ const MapGL = forwardRef<MapGLHandle, {
   const popupRootRef = useRef<Root | null>(null);
   const rafRef = useRef<number>(0);
   const [showSearchButton, setShowSearchButton] = React.useState(false);
+  const [currentTime, setCurrentTime] = React.useState(Date.now());
   const initialCenterRef = useRef(center);
   const heatmapMode = heatmapModeProp;
   const show3DBuildings = show3DBuildingsProp;
 
-  const geo = useMemo(() => eventsToGeoJSON(events as any, Date.now()), [events]);
+  // Update current time every minute to refresh LIVE status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const geo = useMemo(() => eventsToGeoJSON(events as any, currentTime), [events, currentTime]);
   
   // Build an index for quick lookup: id -> event
   const byId = useMemo(() => {
