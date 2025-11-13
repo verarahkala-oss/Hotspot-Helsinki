@@ -116,6 +116,8 @@ const MapGL = forwardRef<MapGLHandle, {
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const popupRootRef = useRef<Root | null>(null);
   const rafRef = useRef<number>(0);
+  const [showSearchButton, setShowSearchButton] = React.useState(false);
+  const initialCenterRef = useRef(center);
 
   const geo = useMemo(() => eventsToGeoJSON(events as any, Date.now()), [events]);
   
@@ -797,6 +799,18 @@ const MapGL = forwardRef<MapGLHandle, {
         const out: Bounds = { minLon: b.getWest(), minLat: b.getSouth(), maxLon: b.getEast(), maxLat: b.getNorth() };
         onBoundsChange(out);
       };
+      
+      // Track map movement to show "Search this area" button
+      map.on("movestart", () => {
+        // Check if map has moved significantly from initial position
+        const currentCenter = map.getCenter();
+        const distanceFromInit = Math.abs(currentCenter.lng - initialCenterRef.current[0]) + 
+                                 Math.abs(currentCenter.lat - initialCenterRef.current[1]);
+        if (distanceFromInit > 0.01) { // ~1km threshold
+          setShowSearchButton(true);
+        }
+      });
+      
       map.on("moveend", emitBounds);
       emitBounds();
     });
@@ -1378,6 +1392,62 @@ const MapGL = forwardRef<MapGLHandle, {
   return (
     <div style={{ position: "relative" }}>
       <div ref={containerRef} style={{ height: "70vh", width: "100%", borderRadius: 12 }} />
+      
+      {/* Search this area button (Airbnb-style) */}
+      {showSearchButton && (
+        <button
+          onClick={() => {
+            // Trigger bounds change which will refetch events in new area
+            const b = mapRef.current?.getBounds();
+            if (b) {
+              const out: Bounds = { 
+                minLon: b.getWest(), 
+                minLat: b.getSouth(), 
+                maxLon: b.getEast(), 
+                maxLat: b.getNorth() 
+              };
+              onBoundsChange(out);
+            }
+            setShowSearchButton(false);
+            initialCenterRef.current = mapRef.current?.getCenter().toArray() as [number, number] || center;
+          }}
+          style={{
+            position: "absolute",
+            top: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10,
+            padding: "10px 20px",
+            background: "#fff",
+            color: "#333",
+            border: "1px solid #ddd",
+            borderRadius: 24,
+            cursor: "pointer",
+            fontWeight: 600,
+            fontSize: 14,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            animation: "slideDown 0.3s ease-out"
+          }}
+        >
+          🔄 Search this area
+        </button>
+      )}
+      
+      <style>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+      `}</style>
       
       {/* Re-center to my location button */}
       <button

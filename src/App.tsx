@@ -3,6 +3,7 @@ import MapGL, { MapGLHandle } from "./MapGL";
 import useDebounce from "./useDebounce";
 import { fetchEvents, type LinkedEvent } from "./utils/fetchEvents";
 import RadialFilterMenu, { FILTER_OPTIONS } from "../components/RadialFilterMenu";
+import TonightsPicks from "../components/TonightsPicks";
 
 type EventLite = LinkedEvent;
 type Bounds = { minLon: number; minLat: number; maxLon: number; maxLat: number };
@@ -256,6 +257,15 @@ export default function App() {
           to { transform: rotate(360deg); }
         }
       `}</style>
+
+      {/* Tonight's Picks Ribbon */}
+      <TonightsPicks 
+        events={filteredEvents} 
+        onEventClick={(id) => {
+          setSelectedId(id);
+          mapRef.current?.flyToEvent(id, { zoom: 16 });
+        }}
+      />
 
       <MapGL 
         ref={mapRef}
