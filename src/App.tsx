@@ -303,40 +303,13 @@ export default function App() {
           : `${filteredEvents.length} events`}
       </div>
 
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-
-      {/* Tonight's Picks Ribbon */}
-      <TonightsPicks 
-        events={filteredEvents} 
-        onEventClick={(id) => {
-          setSelectedId(id);
-          mapRef.current?.flyToEvent(id, { zoom: 16 });
-        }}
-      />
-
-      {/* Map */}
-      <MapGL 
-        ref={mapRef}
-        events={filteredEvents} 
-        onBoundsChange={setBounds} 
-        center={[24.9384, 60.1699]} 
-        zoom={12} 
-        themeOverride={themeOverride}
-        selectedEventId={selectedId}
-        onMarkerClick={setSelectedId}
-      />
-
       {/* Sidebar Toggle Button */}
       <button
         onClick={() => setSidebarOpen(true)}
         style={{
           position: "absolute",
-          right: 16,
-          top: 16,
+          left: 16,
+          top: 124,
           zIndex: 10,
           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           color: "#fff",
@@ -364,6 +337,33 @@ export default function App() {
         <span style={{ fontSize: "18px" }}>📋</span>
         Events ({filteredEvents.length})
       </button>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
+      {/* Tonight's Picks Ribbon */}
+      <TonightsPicks 
+        events={filteredEvents} 
+        onEventClick={(id) => {
+          setSelectedId(id);
+          mapRef.current?.flyToEvent(id, { zoom: 16 });
+        }}
+      />
+
+      {/* Map */}
+      <MapGL 
+        ref={mapRef}
+        events={filteredEvents} 
+        onBoundsChange={setBounds} 
+        center={[24.9384, 60.1699]} 
+        zoom={12} 
+        themeOverride={themeOverride}
+        selectedEventId={selectedId}
+        onMarkerClick={setSelectedId}
+      />
 
       {/* Event Sidebar */}
       <EventSidebar
