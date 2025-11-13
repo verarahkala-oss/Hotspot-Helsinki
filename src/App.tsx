@@ -7,6 +7,8 @@ import OnboardingModal from "../components/OnboardingModal";
 import EventSidebar from "../components/EventSidebar";
 import BottomNavigation, { NavTab } from "../components/BottomNavigation";
 import FilterBar, { QuickFilter } from "../components/FilterBar";
+import PermissionModal from "../components/PermissionModal";
+import DataAttribution from "../components/DataAttribution";
 import { cacheEvents, getCachedEvents } from "./utils/eventCache";
 import { getLikedEvents, getCategoryPreferenceScore, addRecentSearch } from "./utils/personalization";
 
@@ -151,11 +153,26 @@ export default function App() {
   const [activeQuickFilters, setActiveQuickFilters] = useState<Set<QuickFilter>>(new Set());
   const [maxDistance, setMaxDistance] = useState<number>(100); // 100 = no limit
   const [geolocationLoaded, setGeolocationLoaded] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [locationPermissionAsked, setLocationPermissionAsked] = useState(false);
   // OPTIMIZATION: Debounce bounds to prevent excessive filtering during map pan/zoom
   const debouncedBounds = useDebounce(bounds, 500);
 
-  // OPTIMIZATION: Preload user location ASAP for better initial positioning
+  // Check if we should show permission modal
   useEffect(() => {
+    const hasAskedPermission = localStorage.getItem("locationPermissionAsked");
+    if (!hasAskedPermission && "geolocation" in navigator) {
+      // Wait a bit before showing the modal (better UX)
+      setTimeout(() => {
+        setShowPermissionModal(true);
+      }, 1500);
+    } else if (hasAskedPermission === "granted") {
+      // Auto-request if previously granted
+      requestGeolocation();
+    }
+  }, []);
+
+  const requestGeolocation = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -174,7 +191,21 @@ export default function App() {
     } else {
       setGeolocationLoaded(true);
     }
-  }, []);
+  };
+
+  const handleLocationAllow = () => {
+    localStorage.setItem("locationPermissionAsked", "granted");
+    setShowPermissionModal(false);
+    setLocationPermissionAsked(true);
+    requestGeolocation();
+  };
+
+  const handleLocationDeny = () => {
+    localStorage.setItem("locationPermissionAsked", "denied");
+    setShowPermissionModal(false);
+    setLocationPermissionAsked(true);
+    setGeolocationLoaded(true);
+  };
 
   // Update current time every minute to refresh LIVE status
   useEffect(() => {
@@ -493,6 +524,13 @@ export default function App() {
         userLocation={userLocation}
       />
 
+      {/* Permission Modal */}
+      <PermissionModal
+        isOpen={showPermissionModal}
+        onAllow={handleLocationAllow}
+        onDeny={handleLocationDeny}
+      />
+
       {/* Onboarding Modal */}
       {showOnboarding && (
         <OnboardingModal 
@@ -500,6 +538,9 @@ export default function App() {
           initialInterests={Array.from(activeFilters)}
         />
       )}
+
+      {/* Data Attribution */}
+      <DataAttribution />
 
       {/* Header with title only */}
       <div

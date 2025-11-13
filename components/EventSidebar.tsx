@@ -837,6 +837,48 @@ export default function EventSidebar({
                 </button>
               </div>
             </div>
+
+            {/* Privacy & Data Section */}
+            <div
+              style={{
+                marginTop: "24px",
+                padding: "16px",
+                background: "#f8f9fa",
+                borderRadius: 12,
+                border: "1px solid #e0e0e0",
+              }}
+            >
+              <div style={{ fontSize: "14px", fontWeight: 600, color: "#1a1a1a", marginBottom: 12 }}>
+                🔒 Privacy & Data
+              </div>
+              <div style={{ fontSize: 13, color: "#666", lineHeight: 1.6, marginBottom: 12 }}>
+                <strong>Your location</strong> is only used in your browser to show nearby events. We never store or share your location data.
+              </div>
+              <div style={{ fontSize: 13, color: "#666", lineHeight: 1.6, marginBottom: 12 }}>
+                <strong>Event data</strong> is sourced from{" "}
+                <a
+                  href="https://api.hel.fi/linkedevents/v1/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#667eea", textDecoration: "none", fontWeight: 600 }}
+                >
+                  Helsinki LinkedEvents API
+                </a>
+                {" and "}
+                <a
+                  href="https://www.openstreetmap.org/copyright"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#667eea", textDecoration: "none", fontWeight: 600 }}
+                >
+                  OpenStreetMap
+                </a>
+                .
+              </div>
+              <div style={{ fontSize: 12, color: "#999", lineHeight: 1.5 }}>
+                Your preferences and saved events are stored locally on your device.
+              </div>
+            </div>
           </div>
         )}
       </div>
