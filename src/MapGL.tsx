@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useImperativeHandle, forwardRef } from "react";
+import { createRoot, Root } from "react-dom/client";
 import maplibregl, { Map as MLMap, LngLatBoundsLike } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAP_STYLE_LIGHT, MAP_STYLE_DARK } from "./mapStyle";
+import { VenueDetails } from "../components/VenueDetails";
 
 type Ev = { 
   id:string; 
@@ -68,6 +70,7 @@ const MapGL = forwardRef<MapGLHandle, {
   const headingRef = useRef<number | null>(null);
   const coneElRef = useRef<HTMLElement | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  const popupRootRef = useRef<Root | null>(null);
   const rafRef = useRef<number>(0);
 
   const geo = useMemo(() => eventsToGeoJSON(events as any, Date.now()), [events]);
@@ -82,6 +85,59 @@ const MapGL = forwardRef<MapGLHandle, {
     }
     return m;
   }, [events]);
+  
+  // Helper to create popup with VenueDetails component
+  const createEventPopup = (map: MLMap, coords: [number, number], properties: any) => {
+    // Remove existing popup and unmount React component
+    if (popupRef.current) {
+      popupRef.current.remove();
+    }
+    if (popupRootRef.current) {
+      popupRootRef.current.unmount();
+      popupRootRef.current = null;
+    }
+    
+    const badge = properties.isLive 
+      ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` 
+      : "";
+    
+    // Create popup container
+    const popupContainer = document.createElement("div");
+    popupContainer.style.minWidth = "220px";
+    
+    // Add static content
+    popupContainer.innerHTML = `
+      <div>
+        <strong>${properties.title || "Event"}</strong>${badge}
+        <div style="font-size:12px;color:#666;margin-top:4px">${properties.category} • ${properties.price}${properties.time ? " • " + String(properties.time).slice(0,16) : ""}</div>
+        ${properties.website ? `<div style="margin-top:6px"><a href="${properties.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
+      </div>
+      <div id="venue-details-container"></div>
+    `;
+    
+    // Create popup
+    const popup = new maplibregl.Popup({ closeButton: true })
+      .setLngLat(coords)
+      .setDOMContent(popupContainer)
+      .addTo(map);
+    
+    popupRef.current = popup;
+    
+    // Render VenueDetails component
+    const venueContainer = popupContainer.querySelector("#venue-details-container");
+    if (venueContainer && properties.title && coords[1] && coords[0]) {
+      popupRootRef.current = createRoot(venueContainer);
+      popupRootRef.current.render(
+        <VenueDetails 
+          venueName={properties.title} 
+          lat={coords[1]} 
+          lng={coords[0]} 
+        />
+      );
+    }
+    
+    return popup;
+  };
   
   // Imperative API
   useImperativeHandle(ref, () => ({
@@ -100,22 +156,14 @@ const MapGL = forwardRef<MapGLHandle, {
       });
       
       if (opts?.openPopup !== false) {
-        const html = `
-          <div style="min-width:220px">
-            <strong>${ev.title}</strong>
-            <div style="font-size:12px;color:#666;margin-top:4px">${ev.category} • ${ev.price}${ev.time ? " • " + String(ev.time).slice(0,16) : ""}</div>
-            ${ev.website ? `<div style="margin-top:6px"><a href="${ev.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-          </div>`;
-        
-        // Remove existing popup if any
-        if (popupRef.current) {
-          popupRef.current.remove();
-        }
-        
-        popupRef.current = new maplibregl.Popup({ closeButton: true })
-          .setLngLat([ev.lng, ev.lat])
-          .setHTML(html)
-          .addTo(map);
+        createEventPopup(map, [ev.lng, ev.lat], {
+          title: ev.title,
+          category: ev.category,
+          price: ev.price,
+          time: ev.time,
+          website: ev.website,
+          isLive: isLiveNow(ev, Date.now())
+        });
       }
       
       // Sync selection state
@@ -123,7 +171,7 @@ const MapGL = forwardRef<MapGLHandle, {
         onMarkerClick(id);
       }
     }
-  }), [byId, onMarkerClick]);
+  }), [byId, onMarkerClick, createEventPopup]);
   
   // Set heading and rotate the cone
   const setHeadingDeg = (deg: number | null) => {
@@ -408,14 +456,8 @@ const MapGL = forwardRef<MapGLHandle, {
         if (!f) return;
         const p = f?.properties || {};
         const coords = (f?.geometry as any).coordinates;
-        const badge = p.isLive ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` : "";
-        const html = `
-          <div style="min-width:220px">
-            <strong>${p.title || "Event"}</strong>${badge}
-            <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-            ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-          </div>`;
-        new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
+        
+        createEventPopup(map, coords, p);
         
         // Notify parent of marker click
         if (onMarkerClick && p.id) {
@@ -429,14 +471,8 @@ const MapGL = forwardRef<MapGLHandle, {
         if (!f) return;
         const p = f?.properties || {};
         const coords = (f?.geometry as any).coordinates;
-        const badge = p.isLive ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` : "";
-        const html = `
-          <div style="min-width:220px">
-            <strong>${p.title || "Event"}</strong>${badge}
-            <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-            ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-          </div>`;
-        new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
+        
+        createEventPopup(map, coords, p);
         
         if (onMarkerClick && p.id) {
           onMarkerClick(String(p.id));
@@ -449,14 +485,8 @@ const MapGL = forwardRef<MapGLHandle, {
         if (!f) return;
         const p = f?.properties || {};
         const coords = (f?.geometry as any).coordinates;
-        const badge = `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>`;
-        const html = `
-          <div style="min-width:220px">
-            <strong>${p.title || "Event"}</strong>${badge}
-            <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-            ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-          </div>`;
-        new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
+        
+        createEventPopup(map, coords, p);
         
         if (onMarkerClick && p.id) {
           onMarkerClick(String(p.id));
@@ -736,14 +766,8 @@ const MapGL = forwardRef<MapGLHandle, {
           if (!f) return;
           const p = f?.properties || {};
           const coords = (f?.geometry as any).coordinates;
-          const badge = p.isLive ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` : "";
-          const html = `
-            <div style="min-width:220px">
-              <strong>${p.title || "Event"}</strong>${badge}
-              <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-              ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-            </div>`;
-          new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
+          
+          createEventPopup(map, coords, p);
           
           if (onMarkerClick && p.id) {
             onMarkerClick(String(p.id));
@@ -755,14 +779,8 @@ const MapGL = forwardRef<MapGLHandle, {
           if (!f) return;
           const p = f?.properties || {};
           const coords = (f?.geometry as any).coordinates;
-          const badge = p.isLive ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` : "";
-          const html = `
-            <div style="min-width:220px">
-              <strong>${p.title || "Event"}</strong>${badge}
-              <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-              ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-            </div>`;
-          new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
+          
+          createEventPopup(map, coords, p);
           
           if (onMarkerClick && p.id) {
             onMarkerClick(String(p.id));
@@ -774,14 +792,8 @@ const MapGL = forwardRef<MapGLHandle, {
           if (!f) return;
           const p = f?.properties || {};
           const coords = (f?.geometry as any).coordinates;
-          const badge = `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>`;
-          const html = `
-            <div style="min-width:220px">
-              <strong>${p.title || "Event"}</strong>${badge}
-              <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-              ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-            </div>`;
-          new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
+          
+          createEventPopup(map, coords, p);
           
           if (onMarkerClick && p.id) {
             onMarkerClick(String(p.id));
@@ -948,14 +960,8 @@ const MapGL = forwardRef<MapGLHandle, {
             if (!f) return;
             const p = f?.properties || {};
             const coords = (f?.geometry as any).coordinates;
-            const badge = p.isLive ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` : "";
-            const html = `
-              <div style="min-width:220px">
-                <strong>${p.title || "Event"}</strong>${badge}
-                <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-                ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-              </div>`;
-            new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
+            
+            createEventPopup(map, coords, p);
             
             if (onMarkerClick && p.id) {
               onMarkerClick(String(p.id));
@@ -967,14 +973,8 @@ const MapGL = forwardRef<MapGLHandle, {
             if (!f) return;
             const p = f?.properties || {};
             const coords = (f?.geometry as any).coordinates;
-            const badge = p.isLive ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` : "";
-            const html = `
-              <div style="min-width:220px">
-                <strong>${p.title || "Event"}</strong>${badge}
-                <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-                ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-              </div>`;
-            new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
+            
+            createEventPopup(map, coords, p);
             
             if (onMarkerClick && p.id) {
               onMarkerClick(String(p.id));
@@ -986,14 +986,8 @@ const MapGL = forwardRef<MapGLHandle, {
             if (!f) return;
             const p = f?.properties || {};
             const coords = (f?.geometry as any).coordinates;
-            const badge = `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>`;
-            const html = `
-              <div style="min-width:220px">
-                <strong>${p.title || "Event"}</strong>${badge}
-                <div style="font-size:12px;color:#666;margin-top:4px">${p.category} • ${p.price}${p.time ? " • " + String(p.time).slice(0,16) : ""}</div>
-                ${p.website ? `<div style="margin-top:6px"><a href="${p.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
-              </div>`;
-            new maplibregl.Popup({ closeButton: true }).setLngLat(coords).setHTML(html).addTo(map);
+            
+            createEventPopup(map, coords, p);
             
             if (onMarkerClick && p.id) {
               onMarkerClick(String(p.id));
