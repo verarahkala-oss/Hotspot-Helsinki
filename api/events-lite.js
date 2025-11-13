@@ -217,6 +217,23 @@ async function fetchLinkedEvents(bounds) {
         continue;
       }
       
+      // Skip events for seniors/retirees
+      if (
+        title.includes("eläkeläis") ||
+        title.includes("eläkeläin") ||
+        title.includes("seniorei") ||
+        title.includes("ikäihmis") ||
+        title.includes("senior") ||
+        description.includes("eläkeläis") ||
+        description.includes("eläkeläin") ||
+        description.includes("seniorei") ||
+        description.includes("ikäihmis") ||
+        venueName.includes("eläkeläis") ||
+        venueName.includes("seniorei")
+      ) {
+        continue;
+      }
+      
       // Filter by bounds if provided
       if (bounds) {
         const [minLng, minLat, maxLng, maxLat] = bounds;
@@ -300,6 +317,23 @@ async function fetchMyHelsinkiEvents(bounds) {
         title.includes("verkossa") ||
         title.includes("zoom") ||
         title.includes("stream")
+      ) {
+        continue;
+      }
+      
+      // Skip events for seniors/retirees
+      if (
+        title.includes("eläkeläis") ||
+        title.includes("eläkeläin") ||
+        title.includes("seniorei") ||
+        title.includes("ikäihmis") ||
+        title.includes("senior") ||
+        description.includes("eläkeläis") ||
+        description.includes("eläkeläin") ||
+        description.includes("seniorei") ||
+        description.includes("ikäihmis") ||
+        venueName.includes("eläkeläis") ||
+        venueName.includes("seniorei")
       ) {
         continue;
       }
