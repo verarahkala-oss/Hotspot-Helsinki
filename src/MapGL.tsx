@@ -4,6 +4,7 @@ import maplibregl, { Map as MLMap, LngLatBoundsLike } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAP_STYLE_LIGHT, MAP_STYLE_DARK } from "./mapStyle";
 import { VenueDetails } from "../components/VenueDetails";
+import { loadMapIcons, getCategoryIcon } from "./mapIcons";
 
 type Ev = { 
   id:string; 
@@ -57,6 +58,20 @@ function eventsToGeoJSON(events: Ev[], now = Date.now()) {
         else if (e.price === "free") score += 50;
         else if (["music", "food", "arts"].includes(e.category)) score += 100;
         
+        // Determine icon based on category
+        const normalized = e.category.toLowerCase();
+        let iconKey = "default";
+        if (normalized.includes("music") || normalized.includes("concert")) iconKey = "music";
+        else if (normalized.includes("night") || normalized.includes("club") || normalized.includes("bar")) iconKey = "nightlife";
+        else if (normalized.includes("food") || normalized.includes("restaurant") || normalized.includes("cafe")) iconKey = "food";
+        else if (normalized.includes("art") || normalized.includes("museum") || normalized.includes("gallery")) iconKey = "arts";
+        else if (normalized.includes("theater") || normalized.includes("theatre") || normalized.includes("show")) iconKey = "theater";
+        else if (normalized.includes("sport") || normalized.includes("outdoor")) iconKey = "sports";
+        else if (normalized.includes("family") || normalized.includes("kids")) iconKey = "family";
+        else if (normalized.includes("tech") || normalized.includes("coding") || normalized.includes("digital")) iconKey = "tech";
+        else if (normalized.includes("gaming") || normalized.includes("game")) iconKey = "gaming";
+        else if (normalized.includes("festival") || normalized.includes("fair")) iconKey = "festival";
+        
         return {
           type: "Feature",
           properties: { 
@@ -67,7 +82,8 @@ function eventsToGeoJSON(events: Ev[], now = Date.now()) {
             time: e.time || "", 
             website: e.website || "",
             isLive,
-            score
+            score,
+            iconKey
           },
           geometry: { type: "Point", coordinates: [e.lng!, e.lat!] }
         };
@@ -356,6 +372,13 @@ const MapGL = forwardRef<MapGLHandle, {
         }, 500);
       }
       
+      // Load category icons before adding layers
+      loadMapIcons(map).then(() => {
+        console.log('Category icons loaded successfully');
+      }).catch((err) => {
+        console.error('Failed to load category icons:', err);
+      });
+      
       // Clustering source with better configuration
       map.addSource("events", {
         type: "geojson",
@@ -483,7 +506,10 @@ const MapGL = forwardRef<MapGLHandle, {
             1000, 9    // High score = bigger
           ],
           "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 1.5
+          "circle-stroke-width": 1.5,
+          // Smooth transitions for filtering/appearance
+          "circle-radius-transition": { duration: 300, delay: 0 },
+          "circle-opacity-transition": { duration: 300, delay: 0 }
         }
       });
 
@@ -506,9 +532,12 @@ const MapGL = forwardRef<MapGLHandle, {
             "tech", "#9c27b0",
             "#999999"
           ],
-          "circle-radius": 10,
+          "circle-radius": 11,  // Slightly bigger for "grow" effect
           "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 3
+          "circle-stroke-width": 3,
+          // Smooth grow animation when selected
+          "circle-radius-transition": { duration: 150, delay: 0 },
+          "circle-stroke-width-transition": { duration: 150, delay: 0 }
         }
       });
 
@@ -547,7 +576,56 @@ const MapGL = forwardRef<MapGLHandle, {
           ],
           "circle-radius": 7,
           "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2
+          "circle-stroke-width": 2,
+          // Smooth transitions
+          "circle-radius-transition": { duration: 300, delay: 0 },
+          "circle-opacity-transition": { duration: 300, delay: 0 }
+        }
+      });
+
+      // CATEGORY ICON LAYERS - Show emoji/icon on top of markers
+      // Icon for regular (non-live, non-selected) events
+      map.addLayer({
+        id: "event-icons",
+        type: "symbol",
+        source: "events",
+        filter: ["all", ["!", ["has", "point_count"]], ["!=", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
+        layout: {
+          "icon-image": ["get", "iconKey"],
+          "icon-size": 0.6,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-anchor": "bottom"
+        }
+      });
+
+      // Icon for selected events
+      map.addLayer({
+        id: "event-icons-selected",
+        type: "symbol",
+        source: "events",
+        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
+        layout: {
+          "icon-image": ["get", "iconKey"],
+          "icon-size": 0.7,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-anchor": "bottom"
+        }
+      });
+
+      // Icon for LIVE events
+      map.addLayer({
+        id: "event-icons-live",
+        type: "symbol",
+        source: "events",
+        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isLive"], true]],
+        layout: {
+          "icon-image": ["get", "iconKey"],
+          "icon-size": 0.65,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-anchor": "bottom"
         }
       });
 
