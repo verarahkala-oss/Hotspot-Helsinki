@@ -42,11 +42,11 @@
   padding: 4px 8px;
 }
 
-/* --- Pulsing 'my location' marker (Apple-style) with heading cone --- */
+/* --- Pulsing 'my location' marker (Apple Maps-style) with heading cone --- */
 .pulse-pin {
   position: relative;
-  width: 22px;   /* a bit larger to fit cone */
-  height: 22px;
+  width: 40px;   /* larger for Apple Maps feel */
+  height: 40px;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -58,10 +58,10 @@
   transform-origin: 50% 70%;
   width: 0;
   height: 0;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-bottom: 16px solid rgba(30,144,255,0.45); /* iOS blue, semi */
-  filter: drop-shadow(0 0 1px rgba(0,0,0,0.25));
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 22px solid rgba(10, 132, 255, 0.5); /* Apple's iOS blue */
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
   transition: transform 0.3s ease-out, opacity 0.3s ease-out;
   opacity: 0; /* hidden until heading is available */
   z-index: 3;
@@ -69,11 +69,12 @@
 
 .pulse-pin .dot {
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: 20px;    /* larger dot like Apple Maps */
+  height: 20px;
   border-radius: 50%;
-  background: #1e90ff;            /* iOS blue */
-  box-shadow: 0 0 0 2px #ffffff;  /* white ring like Apple */
+  background: #0A84FF;            /* Apple's iOS blue */
+  box-shadow: 0 0 0 3px #ffffff,  /* white ring */
+              0 2px 8px rgba(0,0,0,0.3);  /* soft shadow */
   left: 50%; top: 50%;
   transform: translate(-50%, -50%);
   z-index: 2;
@@ -81,21 +82,21 @@
 
 .pulse-pin .ring {
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: 20px;    /* matches dot */
+  height: 20px;
   border-radius: 50%;
   left: 50%; top: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(30,144,255,0.25);
-  animation: pulse 1.8s ease-out infinite;
+  background: rgba(10, 132, 255, 0.3);  /* Apple's iOS blue */
+  animation: pulse 2s ease-out infinite;
   will-change: transform, opacity;
   z-index: 1;
 }
 
 @keyframes pulse {
-  0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.7; }
-  70%  { transform: translate(-50%, -50%) scale(2.6); opacity: 0.0; }
-  100% { transform: translate(-50%, -50%) scale(2.6); opacity: 0.0; }
+  0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.8; }
+  70%  { transform: translate(-50%, -50%) scale(3.5); opacity: 0.0; }
+  100% { transform: translate(-50%, -50%) scale(3.5); opacity: 0.0; }
 }
 
 /* Pulse animation for selected event cards */

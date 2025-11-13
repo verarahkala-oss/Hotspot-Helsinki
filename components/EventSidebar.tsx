@@ -15,6 +15,7 @@ type EventLite = {
 
 interface EventSidebarProps {
   isOpen: boolean;
+  view: "events" | "settings";
   onClose: () => void;
   events: EventLite[];
   selectedId?: string;
@@ -45,6 +46,7 @@ interface EventSidebarProps {
 
 export default function EventSidebar({
   isOpen,
+  view,
   onClose,
   events,
   selectedId,
@@ -109,40 +111,55 @@ export default function EventSidebar({
           top: 0,
           right: 0,
           bottom: 0,
-          width: "min(400px, 90vw)",
+          width: "min(420px, 92vw)",
           backgroundColor: "#fff",
-          boxShadow: "-2px 0 8px rgba(0, 0, 0, 0.1)",
+          boxShadow: "-4px 0 24px rgba(0, 0, 0, 0.15)",
           transform: isOpen ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.3s ease",
+          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           zIndex: 1000,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          borderTopLeftRadius: 24,
+          borderBottomLeftRadius: 24,
         }}
       >
         {/* Header */}
         <div
           style={{
-            padding: "16px",
-            borderBottom: "1px solid #eee",
+            padding: "20px 24px 16px 24px",
+            borderBottom: "1px solid #f0f0f0",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            backgroundColor: "#f9f9f9",
+            backgroundColor: "#fff",
           }}
         >
-          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>
-            Events ({events.length})
+          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 700, color: "#1a1a1a" }}>
+            {view === "events" ? `Events (${events.length})` : "Settings"}
           </h2>
           <button
             onClick={onClose}
             style={{
-              background: "none",
+              background: "#f5f5f5",
               border: "none",
-              fontSize: "24px",
+              fontSize: "20px",
               cursor: "pointer",
-              padding: "4px 8px",
+              padding: "8px",
               lineHeight: 1,
+              borderRadius: "50%",
+              width: 36,
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#e5e5e5";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "#f5f5f5";
             }}
             title="Close sidebar"
           >
@@ -150,14 +167,16 @@ export default function EventSidebar({
           </button>
         </div>
 
-        {/* Filters */}
+        {view === "events" ? (
+          <>
+            {/* Filters */}
         <div
           style={{
-            padding: "16px",
-            borderBottom: "1px solid #eee",
+            padding: "16px 24px",
+            borderBottom: "1px solid #f0f0f0",
             display: "flex",
             flexDirection: "column",
-            gap: "8px",
+            gap: "12px",
             backgroundColor: "#fafafa",
           }}
         >
@@ -166,10 +185,20 @@ export default function EventSidebar({
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             style={{
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid #ddd",
+              padding: "12px 16px",
+              borderRadius: 12,
+              border: "1px solid #e0e0e0",
               fontSize: "14px",
+              outline: "none",
+              transition: "all 0.2s ease",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "#667eea";
+              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "#e0e0e0";
+              e.currentTarget.style.boxShadow = "none";
             }}
           />
 
@@ -178,12 +207,14 @@ export default function EventSidebar({
               value={price}
               onChange={(e) => onPriceChange(e.target.value as any)}
               style={{
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid #ddd",
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "1px solid #e0e0e0",
                 fontSize: "13px",
                 flex: 1,
                 minWidth: "100px",
+                cursor: "pointer",
+                outline: "none",
               }}
             >
               <option value="">All prices</option>
@@ -194,16 +225,18 @@ export default function EventSidebar({
             <button
               onClick={() => onOnlyLiveChange(!onlyLive)}
               style={{
-                padding: "8px 12px",
-                borderRadius: 8,
-                background: onlyLive ? "#ff3b3b" : "transparent",
-                color: onlyLive ? "#fff" : "inherit",
-                border: onlyLive ? "none" : "1px solid #ddd",
-                fontWeight: onlyLive ? 600 : 400,
+                padding: "10px 14px",
+                borderRadius: 10,
+                background: onlyLive ? "linear-gradient(135deg, #ff3b3b 0%, #ff6b6b 100%)" : "transparent",
+                color: onlyLive ? "#fff" : "#666",
+                border: onlyLive ? "none" : "1px solid #e0e0e0",
+                fontWeight: onlyLive ? 600 : 500,
                 cursor: "pointer",
                 fontSize: "13px",
                 flex: 1,
                 minWidth: "100px",
+                transition: "all 0.2s ease",
+                boxShadow: onlyLive ? "0 2px 8px rgba(255, 59, 59, 0.3)" : "none",
               }}
             >
               {onlyLive ? "🔴 LIVE" : "Show LIVE"}
@@ -214,18 +247,20 @@ export default function EventSidebar({
             <button
               onClick={onShowInterests}
               style={{
-                padding: "8px 12px",
-                borderRadius: 8,
+                padding: "10px 14px",
+                borderRadius: 10,
                 background:
                   activeFilters.size > 0
                     ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
                     : "transparent",
-                color: activeFilters.size > 0 ? "#fff" : "inherit",
-                border: activeFilters.size > 0 ? "none" : "1px solid #ddd",
+                color: activeFilters.size > 0 ? "#fff" : "#666",
+                border: activeFilters.size > 0 ? "none" : "1px solid #e0e0e0",
                 cursor: "pointer",
                 fontWeight: 500,
                 fontSize: "13px",
                 flex: 1,
+                transition: "all 0.2s ease",
+                boxShadow: activeFilters.size > 0 ? "0 2px 8px rgba(102, 126, 234, 0.3)" : "none",
               }}
               title="Edit your interests"
             >
@@ -235,12 +270,21 @@ export default function EventSidebar({
             <button
               onClick={onReset}
               style={{
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid #ddd",
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "1px solid #e0e0e0",
                 background: "transparent",
+                color: "#666",
                 cursor: "pointer",
                 fontSize: "13px",
+                fontWeight: 500,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#f5f5f5";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
               }}
             >
               Reset
@@ -253,10 +297,10 @@ export default function EventSidebar({
           style={{
             flex: 1,
             overflowY: "auto",
-            padding: "8px",
+            padding: "16px",
           }}
         >
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
             {events.slice(0, 50).map((ev) => {
               const live = isLiveNow(ev);
               const isSelected = selectedId === ev.id;
@@ -268,35 +312,83 @@ export default function EventSidebar({
                   }}
                   onClick={() => onEventClick(ev.id)}
                   style={{
-                    border: isSelected ? "2px solid #667eea" : "1px solid #eee",
-                    borderRadius: 10,
-                    padding: 12,
+                    border: isSelected ? "2px solid #667eea" : "none",
+                    borderRadius: 16,
+                    padding: 16,
                     cursor: "pointer",
                     backgroundColor: isSelected ? "#f0f4ff" : "#fff",
                     transition: "all 0.2s ease",
-                    boxShadow: isSelected ? "0 2px 8px rgba(102, 126, 234, 0.2)" : "none",
+                    boxShadow: isSelected 
+                      ? "0 8px 24px rgba(102, 126, 234, 0.25)" 
+                      : "0 2px 8px rgba(0, 0, 0, 0.08)",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.12)";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.08)";
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <strong style={{ fontSize: "14px", flex: 1 }}>{ev.title}</strong>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                    <strong style={{ fontSize: "15px", flex: 1, lineHeight: 1.4, color: "#1a1a1a" }}>
+                      {ev.title}
+                    </strong>
                     {live && (
                       <span
                         style={{
-                          background: "#ff3b3b",
+                          background: "linear-gradient(135deg, #ff3b3b 0%, #ff6b6b 100%)",
                           color: "#fff",
-                          borderRadius: 6,
-                          padding: "2px 6px",
-                          fontSize: 10,
-                          fontWeight: 600,
+                          borderRadius: 8,
+                          padding: "4px 8px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          letterSpacing: "0.5px",
+                          boxShadow: "0 2px 8px rgba(255, 59, 59, 0.3)",
                         }}
                       >
-                        LIVE
+                        🔴 LIVE
                       </span>
                     )}
                   </div>
-                  <div style={{ color: "#666", fontSize: 12 }}>
-                    {ev.category} • {ev.price}
-                    {ev.time ? ` • ${String(ev.time).slice(0, 16)}` : ""}
+                  <div style={{ 
+                    color: "#666", 
+                    fontSize: 13, 
+                    marginBottom: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap"
+                  }}>
+                    <span style={{ 
+                      background: "#f5f5f5", 
+                      padding: "4px 8px", 
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 500
+                    }}>
+                      {ev.category}
+                    </span>
+                    <span style={{ 
+                      background: ev.price === "free" ? "#e8f5e9" : "#fff3e0", 
+                      color: ev.price === "free" ? "#2e7d32" : "#e65100",
+                      padding: "4px 8px", 
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600
+                    }}>
+                      {ev.price === "free" ? "FREE" : "PAID"}
+                    </span>
+                    {ev.time && (
+                      <span style={{ fontSize: 12, color: "#999" }}>
+                        {String(ev.time).slice(0, 16)}
+                      </span>
+                    )}
                   </div>
                   {ev.website && (
                     <a
@@ -306,12 +398,16 @@ export default function EventSidebar({
                       onClick={(e) => e.stopPropagation()}
                       style={{
                         color: "#667eea",
-                        fontSize: 12,
-                        marginTop: 4,
-                        display: "inline-block",
+                        fontSize: 13,
+                        fontWeight: 500,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        textDecoration: "none",
                       }}
                     >
-                      View details →
+                      View details
+                      <span style={{ fontSize: 10 }}>→</span>
                     </a>
                   )}
                 </li>
@@ -332,255 +428,287 @@ export default function EventSidebar({
             </div>
           )}
         </div>
-
-        {/* Settings Section - Collapsible at bottom */}
-        <div
-          style={{
-            padding: "12px 16px",
-            borderTop: "1px solid #eee",
-            backgroundColor: "#f9f9f9",
-            display: "flex",
-            flexDirection: "column",
-            gap: "12px",
-            maxHeight: "50vh",
-            overflowY: "auto",
-          }}
-        >
-          <div style={{ fontSize: "12px", fontWeight: 600, color: "#666", marginBottom: "4px" }}>
-            ⚙️ SETTINGS
-          </div>
-
-          {/* Map Style */}
-          <div>
-            <label style={{ fontSize: "12px", color: "#666", marginBottom: "4px", display: "block" }}>
-              Map Style
-            </label>
-            <select
-              value={themeOverride ?? ""}
-              onChange={(e) => {
-                const v = e.target.value as "" | "light" | "dark";
-                onThemeChange(v || undefined);
-              }}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid #ddd",
-                fontSize: "13px",
-                background: "#fff",
-                width: "100%",
-                cursor: "pointer",
-              }}
-            >
-              <option value="">🌓 Auto</option>
-              <option value="light">☀️ Light</option>
-              <option value="dark">🌙 Dark</option>
-            </select>
-          </div>
-
-          {/* Heatmap Mode Toggle */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <label style={{ fontSize: "13px", color: "#333" }}>🔥 Activity Heatmap</label>
-            <button
-              onClick={() => onHeatmapModeChange(!heatmapMode)}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 6,
-                border: "1px solid #ddd",
-                background: heatmapMode ? "#ff6b35" : "#fff",
-                color: heatmapMode ? "#fff" : "#666",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: 500,
-                transition: "all 0.2s",
-              }}
-            >
-              {heatmapMode ? "ON" : "OFF"}
-            </button>
-          </div>
-
-          {/* 3D Buildings Toggle */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <label style={{ fontSize: "13px", color: "#333" }}>🏢 3D Buildings</label>
-            <button
-              onClick={() => onShow3DBuildingsChange(!show3DBuildings)}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 6,
-                border: "1px solid #ddd",
-                background: show3DBuildings ? "#667eea" : "#fff",
-                color: show3DBuildings ? "#fff" : "#666",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: 500,
-                transition: "all 0.2s",
-              }}
-            >
-              {show3DBuildings ? "ON" : "OFF"}
-            </button>
-          </div>
-
-          {/* Distance Unit */}
-          <div>
-            <label style={{ fontSize: "12px", color: "#666", marginBottom: "4px", display: "block" }}>
-              Distance Unit
-            </label>
-            <select
-              value={distanceUnit}
-              onChange={(e) => onDistanceUnitChange(e.target.value as "km" | "miles")}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid #ddd",
-                fontSize: "13px",
-                background: "#fff",
-                width: "100%",
-                cursor: "pointer",
-              }}
-            >
-              <option value="km">🇪🇺 Kilometers (km)</option>
-              <option value="miles">🇺🇸 Miles (mi)</option>
-            </select>
-          </div>
-
-          {/* Compass Mode */}
-          {onEnableCompass && (
-            <button
-              onClick={onEnableCompass}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 8,
-                border: "1px solid #0b74ff",
-                background: "#fff",
-                color: "#0b74ff",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: 500,
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                justifyContent: "center",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#0b74ff";
-                e.currentTarget.style.color = "#fff";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#fff";
-                e.currentTarget.style.color = "#0b74ff";
-              }}
-              title="Enable device compass for navigation"
-            >
-              🧭 Enable Compass Mode
-            </button>
-          )}
-
-          {/* Filter Presets */}
-          <div>
-            <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block" }}>
-              Quick Presets
-            </label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-              <button
-                onClick={() => onApplyPreset("tonight")}
+          </>
+        ) : (
+          /* Settings View */
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+            }}
+          >
+            {/* Map Style */}
+            <div>
+              <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block", fontWeight: 600 }}>
+                Map Style
+              </label>
+              <select
+                value={themeOverride ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value as "" | "light" | "dark";
+                  onThemeChange(v || undefined);
+                }}
                 style={{
-                  padding: "8px 10px",
-                  borderRadius: 6,
+                  padding: "10px 12px",
+                  borderRadius: 8,
                   border: "1px solid #ddd",
+                  fontSize: "14px",
                   background: "#fff",
-                  color: "#333",
+                  width: "100%",
                   cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f0f4ff";
-                  e.currentTarget.style.borderColor = "#667eea";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#fff";
-                  e.currentTarget.style.borderColor = "#ddd";
                 }}
               >
-                🌙 Tonight
-              </button>
-              <button
-                onClick={() => onApplyPreset("weekend")}
+                <option value="">🌓 Auto</option>
+                <option value="light">☀️ Light</option>
+                <option value="dark">🌙 Dark</option>
+              </select>
+            </div>
+
+            {/* Heatmap Mode Toggle */}
+            <div>
+              <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block", fontWeight: 600 }}>
+                Activity Heatmap
+              </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "#f9f9f9", borderRadius: 8 }}>
+                <span style={{ fontSize: "14px", color: "#333" }}>🔥 Show heatmap</span>
+                <button
+                  onClick={() => onHeatmapModeChange(!heatmapMode)}
+                  style={{
+                    padding: "6px 16px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: heatmapMode ? "#ff6b35" : "#ddd",
+                    color: heatmapMode ? "#fff" : "#666",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {heatmapMode ? "ON" : "OFF"}
+                </button>
+              </div>
+            </div>
+
+            {/* 3D Buildings Toggle */}
+            <div>
+              <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block", fontWeight: 600 }}>
+                3D Buildings
+              </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "#f9f9f9", borderRadius: 8 }}>
+                <span style={{ fontSize: "14px", color: "#333" }}>🏢 Show building extrusions</span>
+                <button
+                  onClick={() => onShow3DBuildingsChange(!show3DBuildings)}
+                  style={{
+                    padding: "6px 16px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: show3DBuildings ? "#667eea" : "#ddd",
+                    color: show3DBuildings ? "#fff" : "#666",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {show3DBuildings ? "ON" : "OFF"}
+                </button>
+              </div>
+            </div>
+
+            {/* Distance Unit */}
+            <div>
+              <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block", fontWeight: 600 }}>
+                Distance Unit
+              </label>
+              <select
+                value={distanceUnit}
+                onChange={(e) => onDistanceUnitChange(e.target.value as "km" | "miles")}
                 style={{
-                  padding: "8px 10px",
-                  borderRadius: 6,
+                  padding: "10px 12px",
+                  borderRadius: 8,
                   border: "1px solid #ddd",
+                  fontSize: "14px",
                   background: "#fff",
-                  color: "#333",
+                  width: "100%",
                   cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f0f4ff";
-                  e.currentTarget.style.borderColor = "#667eea";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#fff";
-                  e.currentTarget.style.borderColor = "#ddd";
                 }}
               >
-                🎉 Weekend
-              </button>
-              <button
-                onClick={() => onApplyPreset("free")}
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: 6,
-                  border: "1px solid #ddd",
-                  background: "#fff",
-                  color: "#333",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f0f4ff";
-                  e.currentTarget.style.borderColor = "#667eea";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#fff";
-                  e.currentTarget.style.borderColor = "#ddd";
-                }}
-              >
-                💸 Free
-              </button>
-              <button
-                onClick={() => onApplyPreset("near-me")}
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: 6,
-                  border: "1px solid #ddd",
-                  background: "#fff",
-                  color: "#333",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f0f4ff";
-                  e.currentTarget.style.borderColor = "#667eea";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#fff";
-                  e.currentTarget.style.borderColor = "#ddd";
-                }}
-              >
-                📍 Near Me
-              </button>
+                <option value="km">🇪🇺 Kilometers (km)</option>
+                <option value="miles">🇺🇸 Miles (mi)</option>
+              </select>
+            </div>
+
+            {/* Compass Mode */}
+            {onEnableCompass && (
+              <div>
+                <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block", fontWeight: 600 }}>
+                  Compass Navigation
+                </label>
+                <button
+                  onClick={onEnableCompass}
+                  style={{
+                    padding: "12px 16px",
+                    borderRadius: 8,
+                    border: "2px solid #0b74ff",
+                    background: "#fff",
+                    color: "#0b74ff",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    justifyContent: "center",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#0b74ff";
+                    e.currentTarget.style.color = "#fff";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#fff";
+                    e.currentTarget.style.color = "#0b74ff";
+                  }}
+                  title="Enable device compass for navigation"
+                >
+                  <span style={{ fontSize: "20px" }}>🧭</span>
+                  Enable Compass Mode
+                </button>
+              </div>
+            )}
+
+            {/* Filter Presets */}
+            <div>
+              <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block", fontWeight: 600 }}>
+                Quick Presets
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <button
+                  onClick={() => onApplyPreset("tonight")}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #ddd",
+                    background: "#fff",
+                    color: "#333",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    transition: "all 0.2s",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f0f4ff";
+                    e.currentTarget.style.borderColor = "#667eea";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#fff";
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                >
+                  <span style={{ fontSize: "20px" }}>🌙</span>
+                  Tonight
+                </button>
+                <button
+                  onClick={() => onApplyPreset("weekend")}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #ddd",
+                    background: "#fff",
+                    color: "#333",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    transition: "all 0.2s",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f0f4ff";
+                    e.currentTarget.style.borderColor = "#667eea";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#fff";
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                >
+                  <span style={{ fontSize: "20px" }}>🎉</span>
+                  Weekend
+                </button>
+                <button
+                  onClick={() => onApplyPreset("free")}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #ddd",
+                    background: "#fff",
+                    color: "#333",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    transition: "all 0.2s",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f0f4ff";
+                    e.currentTarget.style.borderColor = "#667eea";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#fff";
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                >
+                  <span style={{ fontSize: "20px" }}>💸</span>
+                  Free
+                </button>
+                <button
+                  onClick={() => onApplyPreset("near-me")}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #ddd",
+                    background: "#fff",
+                    color: "#333",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    transition: "all 0.2s",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f0f4ff";
+                    e.currentTarget.style.borderColor = "#667eea";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#fff";
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                >
+                  <span style={{ fontSize: "20px" }}>📍</span>
+                  Near Me
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

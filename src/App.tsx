@@ -5,6 +5,8 @@ import { fetchEvents, type LinkedEvent } from "./utils/fetchEvents";
 import TonightsPicks from "../components/TonightsPicks";
 import OnboardingModal from "../components/OnboardingModal";
 import EventSidebar from "../components/EventSidebar";
+import BottomNavigation, { NavTab } from "../components/BottomNavigation";
+import FilterBar, { QuickFilter } from "../components/FilterBar";
 
 const FILTER_OPTIONS = [
   { id: "music", label: "🎵 Music", keywords: ["music", "concert", "band", "dj", "jazz", "rock", "pop", "classical"] },
@@ -35,6 +37,67 @@ function isLiveNow(e: EventLite, now = Date.now()) {
   }
   
   return true;
+}
+
+// Calculate distance between two points using Haversine formula (in km)
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Score events based on: LIVE status, distance, popularity, and category match
+function scoreEvent(
+  event: EventLite,
+  userLoc: { lat: number; lng: number } | null,
+  activeFilters: Set<string>,
+  currentTime: number
+): number {
+  let score = 0;
+  
+  // 1. LIVE STATUS (highest priority) - +1000 points
+  if (isLiveNow(event, currentTime)) {
+    score += 1000;
+  }
+  
+  // 2. DISTANCE - Up to +500 points (closer is better)
+  if (userLoc && event.lat !== null && event.lng !== null) {
+    const distance = calculateDistance(userLoc.lat, userLoc.lng, event.lat, event.lng);
+    // Events within 1km get max points, scaling down to 0 at 10km+
+    const distanceScore = Math.max(0, 500 - (distance * 50));
+    score += distanceScore;
+  }
+  
+  // 3. CATEGORY MATCH - +200 points per matching filter
+  if (activeFilters.size > 0) {
+    const matchCount = Array.from(activeFilters).filter(filterId => {
+      const filterOption = FILTER_OPTIONS.find(opt => opt.id === filterId);
+      if (!filterOption) return false;
+      const searchText = `${event.category} ${event.title}`.toLowerCase();
+      return filterOption.keywords.some(keyword => 
+        searchText.includes(keyword.toLowerCase())
+      );
+    }).length;
+    score += matchCount * 200;
+  }
+  
+  // 4. TIME UNTIL START - Slight bonus for events starting soon
+  if (event.start) {
+    const startTime = Date.parse(event.start);
+    const hoursUntilStart = (startTime - currentTime) / (1000 * 60 * 60);
+    if (hoursUntilStart > 0 && hoursUntilStart <= 3) {
+      // Events starting in the next 3 hours get a small boost
+      score += (3 - hoursUntilStart) * 50;
+    }
+  }
+  
+  return score;
 }
 
 // Fallback demo events in case API fails
@@ -69,10 +132,15 @@ export default function App() {
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarView, setSidebarView] = useState<"events" | "settings">("events");
   const [heatmapMode, setHeatmapMode] = useState(false);
   const [show3DBuildings, setShow3DBuildings] = useState(true);
   const [distanceUnit, setDistanceUnit] = useState<"km" | "miles">("km");
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [activeTab, setActiveTab] = useState<NavTab>("map");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [activeQuickFilters, setActiveQuickFilters] = useState<Set<QuickFilter>>(new Set());
+  const [maxDistance, setMaxDistance] = useState<number>(100); // 100 = no limit
   const debouncedBounds = useDebounce(bounds, 500);
 
   // Update current time every minute to refresh LIVE status
@@ -81,6 +149,23 @@ export default function App() {
       setCurrentTime(Date.now());
     }, 60000); // Update every minute
     return () => clearInterval(interval);
+  }, []);
+
+  // Track user location for scoring
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.log("Geolocation not available:", error.message);
+        }
+      );
+    }
   }, []);
 
   // Check if user has seen onboarding
@@ -139,8 +224,68 @@ export default function App() {
   }, []); // Only run once on mount
 
   // Filter events by query, price, category, bounds, radial filters, and LIVE status
+  // Then score and sort by relevance
   const filteredEvents = useMemo(() => {
     let filtered = events;
+    
+    // Filter out events that ended more than 24 hours ago
+    const twentyFourHoursAgo = currentTime - (24 * 60 * 60 * 1000);
+    filtered = filtered.filter(e => {
+      if (!e.end) return true; // Keep events without end time
+      const endTime = Date.parse(e.end);
+      return endTime > twentyFourHoursAgo;
+    });
+
+    // Apply Quick Filters
+    if (activeQuickFilters.has("now")) {
+      filtered = filtered.filter(e => isLiveNow(e, currentTime));
+    }
+    
+    if (activeQuickFilters.has("tonight")) {
+      const todayStart = new Date(currentTime);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(currentTime);
+      todayEnd.setHours(23, 59, 59, 999);
+      
+      filtered = filtered.filter(e => {
+        if (!e.start) return false;
+        const startTime = Date.parse(e.start);
+        return startTime >= todayStart.getTime() && startTime <= todayEnd.getTime();
+      });
+    }
+    
+    if (activeQuickFilters.has("weekend")) {
+      filtered = filtered.filter(e => {
+        if (!e.start) return false;
+        const eventDate = new Date(e.start);
+        const day = eventDate.getDay();
+        return day === 0 || day === 6; // Sunday (0) or Saturday (6)
+      });
+    }
+    
+    if (activeQuickFilters.has("free")) {
+      filtered = filtered.filter(e => e.price === "free");
+    }
+    
+    if (activeQuickFilters.has("popular")) {
+      // Filter by events with high scores (top 30%)
+      const scoredEvents = filtered.map(event => ({
+        event,
+        score: scoreEvent(event, userLocation, activeFilters, currentTime)
+      }));
+      scoredEvents.sort((a, b) => b.score - a.score);
+      const topThreshold = Math.ceil(scoredEvents.length * 0.3);
+      filtered = scoredEvents.slice(0, topThreshold).map(({ event }) => event);
+    }
+
+    // Filter by distance if user location is available
+    if (userLocation && maxDistance < 100) {
+      filtered = filtered.filter(e => {
+        if (e.lat === null || e.lng === null) return false;
+        const distance = calculateDistance(userLocation.lat, userLocation.lng, e.lat, e.lng);
+        return distance <= maxDistance;
+      });
+    }
     
     // Filter by search query
     if (query) {
@@ -199,8 +344,21 @@ export default function App() {
       filtered = filtered.filter(e => isLiveNow(e, currentTime));
     }
     
+    // Score and sort events by relevance (skip if "popular" filter already sorted)
+    if (!activeQuickFilters.has("popular")) {
+      const scoredEvents = filtered.map(event => ({
+        event,
+        score: scoreEvent(event, userLocation, activeFilters, currentTime)
+      }));
+      
+      // Sort by score (highest first)
+      scoredEvents.sort((a, b) => b.score - a.score);
+      
+      filtered = scoredEvents.map(({ event }) => event);
+    }
+    
     return filtered;
-  }, [events, query, price, category, debouncedBounds, onlyLive, activeFilters, currentTime]);
+  }, [events, query, price, category, debouncedBounds, onlyLive, activeFilters, currentTime, userLocation, activeQuickFilters, maxDistance]);
 
   const onRowClick = (id: string) => {
     setSelectedId(id);
@@ -234,10 +392,48 @@ export default function App() {
     setCategory("");
     setOnlyLive(false);
     setActiveFilters(new Set());
+    setActiveQuickFilters(new Set());
+    setMaxDistance(100);
+  };
+
+  const handleQuickFilterToggle = (filter: QuickFilter) => {
+    setActiveQuickFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(filter)) {
+        next.delete(filter);
+      } else {
+        next.add(filter);
+      }
+      return next;
+    });
+  };
+
+  const handleCategoryFilterToggle = (categoryId: string) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      localStorage.setItem("userInterests", JSON.stringify(Array.from(next)));
+      return next;
+    });
   };
 
   return (
     <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden" }}>
+      {/* Filter Bar */}
+      <FilterBar
+        activeQuickFilters={activeQuickFilters}
+        onQuickFilterToggle={handleQuickFilterToggle}
+        activeCategoryFilters={activeFilters}
+        onCategoryFilterToggle={handleCategoryFilterToggle}
+        maxDistance={maxDistance}
+        onMaxDistanceChange={setMaxDistance}
+        userLocation={userLocation}
+      />
+
       {/* Onboarding Modal */}
       {showOnboarding && (
         <OnboardingModal 
@@ -250,17 +446,17 @@ export default function App() {
       <div
         style={{
           position: "absolute",
-          top: 16,
+          top: 70,
           left: 16,
           zIndex: 10,
-          background: "rgba(255, 255, 255, 0.95)",
-          backdropFilter: "blur(10px)",
-          padding: "12px 16px",
-          borderRadius: 12,
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+          background: "rgba(255, 255, 255, 0.98)",
+          backdropFilter: "blur(12px)",
+          padding: "14px 20px",
+          borderRadius: 16,
+          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)",
         }}
       >
-        <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700 }}>
+        <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700, color: "#1a1a1a" }}>
           Hotspot Helsinki
         </h1>
       </div>
@@ -269,19 +465,20 @@ export default function App() {
       <div
         style={{
           position: "absolute",
-          top: 76,
+          top: 130,
           left: 16,
           zIndex: 10,
-          background: "rgba(255, 255, 255, 0.95)",
-          backdropFilter: "blur(10px)",
-          padding: "8px 12px",
-          borderRadius: 8,
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+          background: "rgba(255, 255, 255, 0.98)",
+          backdropFilter: "blur(12px)",
+          padding: "10px 14px",
+          borderRadius: 12,
+          boxShadow: "0 2px 12px rgba(0, 0, 0, 0.1)",
           fontSize: "13px",
           color: error ? "#c00" : "#666",
           display: "flex",
           alignItems: "center",
           gap: 8,
+          fontWeight: 500,
         }}
       >
         {loading && (
@@ -290,7 +487,7 @@ export default function App() {
               display: "inline-block",
               width: 14,
               height: 14,
-              border: "2px solid #ddd",
+              border: "2px solid #e0e0e0",
               borderTop: "2px solid #667eea",
               borderRadius: "50%",
               animation: "spin 1s linear infinite",
@@ -306,21 +503,24 @@ export default function App() {
 
       {/* Sidebar Toggle Button */}
       <button
-        onClick={() => setSidebarOpen(true)}
+        onClick={() => {
+          setSidebarView("events");
+          setSidebarOpen(true);
+        }}
         style={{
           position: "absolute",
           left: 16,
-          top: 124,
+          top: 178,
           zIndex: 10,
           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           color: "#fff",
           border: "none",
-          borderRadius: 12,
-          padding: "12px 18px",
+          borderRadius: 14,
+          padding: "14px 20px",
           fontSize: "15px",
           fontWeight: 600,
           cursor: "pointer",
-          boxShadow: "0 4px 12px rgba(102, 126, 234, 0.4)",
+          boxShadow: "0 4px 16px rgba(102, 126, 234, 0.4)",
           display: "flex",
           alignItems: "center",
           gap: 8,
@@ -337,6 +537,49 @@ export default function App() {
       >
         <span style={{ fontSize: "18px" }}>📋</span>
         Events ({filteredEvents.length})
+      </button>
+
+      {/* Settings Button */}
+      <button
+        onClick={() => {
+          setSidebarView("settings");
+          setSidebarOpen(true);
+        }}
+        style={{
+          position: "absolute",
+          left: 16,
+          top: 230,
+          zIndex: 10,
+          background: "rgba(255, 255, 255, 0.98)",
+          backdropFilter: "blur(12px)",
+          color: "#666",
+          border: "1px solid #e0e0e0",
+          borderRadius: 14,
+          padding: "14px 20px",
+          fontSize: "15px",
+          fontWeight: 600,
+          cursor: "pointer",
+          boxShadow: "0 2px 12px rgba(0, 0, 0, 0.1)",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          transition: "all 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.boxShadow = "0 4px 16px rgba(102, 126, 234, 0.2)";
+          e.currentTarget.style.borderColor = "#667eea";
+          e.currentTarget.style.color = "#667eea";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 2px 12px rgba(0, 0, 0, 0.1)";
+          e.currentTarget.style.borderColor = "#e0e0e0";
+          e.currentTarget.style.color = "#666";
+        }}
+      >
+        <span style={{ fontSize: "18px" }}>⚙️</span>
+        Settings
       </button>
 
       <style>{`
@@ -371,7 +614,11 @@ export default function App() {
       {/* Event Sidebar */}
       <EventSidebar
         isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        view={sidebarView}
+        onClose={() => {
+          setSidebarOpen(false);
+          setActiveTab("map");
+        }}
         events={filteredEvents}
         selectedId={selectedId}
         onEventClick={(id) => {
@@ -410,6 +657,109 @@ export default function App() {
           } else if (preset === "near-me") {
             // Trigger geolocation and set bounds
             mapRef.current?.enableCompass();
+          }
+        }}
+      />
+
+      {/* Floating Action Buttons */}
+      <div
+        style={{
+          position: "fixed",
+          right: 16,
+          bottom: 100,
+          zIndex: 10,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        {/* Center on My Location Button */}
+        <button
+          onClick={() => mapRef.current?.centerOnUserLocation()}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "#fff",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "24px",
+            boxShadow: "0 4px 12px rgba(102, 126, 234, 0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.boxShadow = "0 6px 16px rgba(102, 126, 234, 0.5)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.4)";
+          }}
+          title="Center on my location"
+        >
+          📍
+        </button>
+
+        {/* Home/Reset Button */}
+        <button
+          onClick={() => {
+            mapRef.current?.resetToHome();
+            handleReset();
+          }}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: "#fff",
+            color: "#667eea",
+            border: "2px solid #667eea",
+            cursor: "pointer",
+            fontSize: "24px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.background = "#667eea";
+            e.currentTarget.style.color = "#fff";
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.background = "#fff";
+            e.currentTarget.style.color = "#667eea";
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+          }}
+          title="Reset to home"
+        >
+          🏠
+        </button>
+      </div>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation 
+        activeTab={activeTab} 
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          if (tab === "map") {
+            setSidebarOpen(false);
+          } else if (tab === "explore") {
+            setSidebarView("events");
+            setSidebarOpen(true);
+          } else if (tab === "saved") {
+            // Future: show saved events
+            setSidebarView("events");
+            setSidebarOpen(true);
+          } else if (tab === "profile") {
+            setSidebarView("settings");
+            setSidebarOpen(true);
           }
         }}
       />

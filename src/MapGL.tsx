@@ -116,6 +116,8 @@ function eventsToGeoJSON(events: Ev[], now = Date.now()) {
 export type MapGLHandle = {
   flyToEvent: (id: string, opts?: { zoom?: number; openPopup?: boolean }) => void;
   enableCompass: () => void;
+  centerOnUserLocation: () => void;
+  resetToHome: () => void;
 };
 
 const MapGL = forwardRef<MapGLHandle, {
@@ -353,7 +355,23 @@ const MapGL = forwardRef<MapGLHandle, {
         onMarkerClick(id);
       }
     },
-    enableCompass: enableCompassFallback
+    enableCompass: enableCompassFallback,
+    centerOnUserLocation: () => {
+      if (geolocateRef.current) {
+        geolocateRef.current.trigger();
+      }
+    },
+    resetToHome: () => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.easeTo({
+        center: initialCenterRef.current,
+        zoom: 12,
+        pitch: 0,
+        bearing: 0,
+        duration: 1000
+      });
+    }
   }), [byId, onMarkerClick, createEventPopup]);
   
   // Set heading and rotate the cone
@@ -1763,37 +1781,7 @@ const MapGL = forwardRef<MapGLHandle, {
         }
       `}</style>
       
-      {/* Re-center to my location button */}
-      <button
-        onClick={() => {
-          if (geolocateRef.current) {
-            geolocateRef.current.trigger();
-          }
-        }}
-        style={{
-          position: "absolute", 
-          right: 16, 
-          top: 140, 
-          zIndex: 10,
-          padding: "12px",
-          background: "#fff", 
-          color: "#333",
-          border: "none", 
-          borderRadius: 8, 
-          cursor: "pointer", 
-          fontWeight: 600,
-          fontSize: 18,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-          width: 44,
-          height: 44,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}
-        title="Re-center to my location"
-      >
-        📍
-      </button>
+      {/* Re-center button moved to App.tsx as floating button */}
     </div>
   );
 });
