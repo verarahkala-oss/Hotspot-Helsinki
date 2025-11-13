@@ -523,17 +523,15 @@ export default async function handler(req, res) {
         
         const fetchBounds = hasBBox ? bounds : null;
         
-        const [linkedEvents, myHelsinkiEvents, eventbriteEvents, meetupEvents] = await Promise.all([
+        const [linkedEvents, myHelsinkiEvents] = await Promise.all([
           fetchLinkedEvents(fetchBounds),
-          fetchMyHelsinkiEvents(fetchBounds),
-          fetchEventbriteEvents(fetchBounds),
-          fetchMeetupEvents(fetchBounds)
+          fetchMyHelsinkiEvents(fetchBounds)
         ]);
         
-        console.log(`Fetched: LinkedEvents=${linkedEvents.length}, MyHelsinki=${myHelsinkiEvents.length}, Eventbrite=${eventbriteEvents.length}, Meetup=${meetupEvents.length}`);
+        console.log(`Fetched: LinkedEvents=${linkedEvents.length}, MyHelsinki=${myHelsinkiEvents.length}`);
         
         // Merge all events
-        let allEvents = [...linkedEvents, ...myHelsinkiEvents, ...eventbriteEvents, ...meetupEvents];
+        let allEvents = [...linkedEvents, ...myHelsinkiEvents];
         
         // Deduplicate events
         allEvents = dedupeEvents(allEvents);

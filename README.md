@@ -15,29 +15,16 @@ Live events happening in Helsinki
 
 ## Data Sources
 
-This app aggregates events from multiple sources:
+This app aggregates events from **free public APIs** - no sign-ups or API keys required!
 
-| Source | Status | Events | Coverage |
-|--------|--------|--------|----------|
-| **LinkedEvents API** | ✅ Always Active | ~50-200 | Official City of Helsinki events (museums, libraries, cultural venues) |
-| **MyHelsinki API** | ✅ Always Active | ~30-100 | Tourism & city events |
-| **Eventbrite API** | 🔑 Requires Key | ~100-300 | Community events, concerts, workshops, nightlife |
-| **Meetup API** | 🔑 Requires Key | ~50-100 | Tech meetups, networking, professional events |
+| Source | Events | Coverage |
+|--------|--------|----------|
+| **LinkedEvents API** | ~100-300 | Official City of Helsinki events (museums, libraries, cultural venues, festivals) |
+| **MyHelsinki API** | ~50-150 | Tourism & city events, attractions |
 
-### Without API Keys
-- Works immediately with LinkedEvents + MyHelsinki
-- Shows ~80-300 official city events
-- Good for tourists & general events
+**Total: ~150-450 events at any given time!**
 
-### With Eventbrite Key (Recommended)
-- Adds ~100-300 community events
-- Better nightlife, entertainment, workshops coverage
-- 2-3x more events on the map
-
-### With Meetup Key (Optional)
-- Adds ~50-100 tech/networking events
-- Best for professionals & tech community
-- Great supplement to Eventbrite
+All data is fetched from official City of Helsinki APIs - always up-to-date, always free.
 
 ## Setup
 
@@ -51,45 +38,9 @@ npm install
 
 ### Environment Variables
 
-#### For Local Development:
-Create a `.env` file in the root directory:
+**No API keys needed!** The app works out of the box.
 
-```bash
-# Optional: Eventbrite API (Recommended for more events)
-EVENTBRITE_API_KEY=your_private_token_here
-
-# Optional: Meetup API
-MEETUP_API_KEY=your_oauth_token_here
-```
-
-#### For Production (Vercel):
-Add these as environment variables in your Vercel project settings:
-- `EVENTBRITE_API_KEY` (optional)
-- `MEETUP_API_KEY` (optional)
-- Vercel KV variables are auto-configured when you add KV storage
-
-### Getting API Keys
-
-#### Eventbrite API Key (Recommended):
-1. Go to [Eventbrite Platform](https://www.eventbrite.com/platform/api)
-2. Sign in or create an Eventbrite account
-3. Navigate to Account Settings → API Keys
-4. Click "Create API Key" or "Create App"
-5. Copy your **Private Token**
-6. Add to `.env` as `EVENTBRITE_API_KEY=YOUR_TOKEN`
-
-**Free tier limits:**
-- 1,000 requests/day (plenty for this app with caching)
-- No credit card required
-
-#### Meetup API Key (Optional):
-1. Go to [Meetup API OAuth](https://secure.meetup.com/meetup_api/oauth_consumers/)
-2. Sign in to Meetup
-3. Create an OAuth Consumer
-4. Get your access token
-5. Add to `.env` as `MEETUP_API_KEY=YOUR_TOKEN`
-
-**Note:** Meetup API setup is more complex (OAuth 2.0). The app works great with just Eventbrite.
+For production on Vercel, KV cache variables are auto-configured when you add KV storage (optional).
 
 ### Development
 ```bash
@@ -122,7 +73,7 @@ The `/api/events-lite` endpoint supports these query parameters:
 | `category` | string | - | Filter: music, food, sports, family, arts, tech, nightlife, other |
 | `freeOnly` | boolean | false | Show only free events |
 | `liveOnly` | boolean | false | Show only currently happening events |
-| `bbox` | string | - | Legacy: "minLng,minLat,maxLng,maxLat" |
+| `bbox` | string | - | Bounding box: "minLng,minLat,maxLng,maxLat" |
 
 **Example:**
 ```
@@ -159,8 +110,6 @@ API sources are only hit when all caches expire, reducing external API calls by 
 - MapLibre GL JS
 - LinkedEvents API (City of Helsinki)
 - MyHelsinki Open API
-- Eventbrite API (optional)
-- Meetup API (optional)
 - Vercel + Vercel KV (serverless + caching)
 
 ## License
