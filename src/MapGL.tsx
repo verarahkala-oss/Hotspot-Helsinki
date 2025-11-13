@@ -1268,8 +1268,26 @@ const MapGL = forwardRef<MapGLHandle, {
               source: "events", 
               filter: ["all", ["!",["has","point_count"]], ["!=", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]] as any,
               paint: { 
-                "circle-color":"#ff3b3b",
-                "circle-radius":6,
+                "circle-color": [
+                  "match",
+                  ["get", "category"],
+                  "music", "#ff3b3b",
+                  "nightlife", "#ff3b3b",
+                  "food", "#ffa726",
+                  "arts", "#42a5f5",
+                  "sports", "#66bb6a",
+                  "family", "#66bb6a",
+                  "tech", "#9c27b0",
+                  "#999999"
+                ] as any,
+                "circle-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "score"],
+                  0, 5,
+                  500, 7,
+                  1000, 9
+                ] as any,
                 "circle-stroke-color":"#ffffff",
                 "circle-stroke-width":1.5 
               }
@@ -1283,8 +1301,19 @@ const MapGL = forwardRef<MapGLHandle, {
               source: "events", 
               filter: ["all", ["!",["has","point_count"]], ["==", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]] as any,
               paint: { 
-                "circle-color":"#ff3b3b",
-                "circle-radius":8,
+                "circle-color": [
+                  "match",
+                  ["get", "category"],
+                  "music", "#ff3b3b",
+                  "nightlife", "#ff3b3b",
+                  "food", "#ffa726",
+                  "arts", "#42a5f5",
+                  "sports", "#66bb6a",
+                  "family", "#66bb6a",
+                  "tech", "#9c27b0",
+                  "#999999"
+                ] as any,
+                "circle-radius":11,
                 "circle-stroke-color":"#ffffff",
                 "circle-stroke-width":3 
               }
@@ -1313,10 +1342,21 @@ const MapGL = forwardRef<MapGLHandle, {
               source: "events",
               filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isLive"], true]],
               paint: {
-                "circle-color": "#ff3b3b",
-                "circle-radius": 6,
+                "circle-color": [
+                  "match",
+                  ["get", "category"],
+                  "music", "#ff1744",
+                  "nightlife", "#ff1744",
+                  "food", "#ff9800",
+                  "arts", "#2196f3",
+                  "sports", "#4caf50",
+                  "family", "#4caf50",
+                  "tech", "#ab47bc",
+                  "#ff3b3b"
+                ] as any,
+                "circle-radius": 7,
                 "circle-stroke-color": "#ffffff",
-                "circle-stroke-width": 1.5
+                "circle-stroke-width": 2
               }
             });
           }
