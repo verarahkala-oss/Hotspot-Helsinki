@@ -248,19 +248,106 @@ export default function EventSidebar({
           </div>
         </div>
 
-        {/* Settings Section */}
+        {/* Event List */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "8px",
+          }}
+        >
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+            {events.slice(0, 50).map((ev) => {
+              const live = isLiveNow(ev);
+              const isSelected = selectedId === ev.id;
+              return (
+                <li
+                  key={ev.id}
+                  ref={(el) => {
+                    cardRefs.current[ev.id] = el;
+                  }}
+                  onClick={() => onEventClick(ev.id)}
+                  style={{
+                    border: isSelected ? "2px solid #667eea" : "1px solid #eee",
+                    borderRadius: 10,
+                    padding: 12,
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "#f0f4ff" : "#fff",
+                    transition: "all 0.2s ease",
+                    boxShadow: isSelected ? "0 2px 8px rgba(102, 126, 234, 0.2)" : "none",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <strong style={{ fontSize: "14px", flex: 1 }}>{ev.title}</strong>
+                    {live && (
+                      <span
+                        style={{
+                          background: "#ff3b3b",
+                          color: "#fff",
+                          borderRadius: 6,
+                          padding: "2px 6px",
+                          fontSize: 10,
+                          fontWeight: 600,
+                        }}
+                      >
+                        LIVE
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ color: "#666", fontSize: 12 }}>
+                    {ev.category} • {ev.price}
+                    {ev.time ? ` • ${String(ev.time).slice(0, 16)}` : ""}
+                  </div>
+                  {ev.website && (
+                    <a
+                      href={ev.website}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        color: "#667eea",
+                        fontSize: 12,
+                        marginTop: 4,
+                        display: "inline-block",
+                      }}
+                    >
+                      View details →
+                    </a>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          {events.length === 0 && (
+            <div
+              style={{
+                textAlign: "center",
+                color: "#999",
+                padding: "40px 20px",
+                fontSize: "14px",
+              }}
+            >
+              No events found. Try adjusting your filters.
+            </div>
+          )}
+        </div>
+
+        {/* Settings Section - Collapsible at bottom */}
         <div
           style={{
             padding: "12px 16px",
-            borderBottom: "1px solid #eee",
+            borderTop: "1px solid #eee",
             backgroundColor: "#f9f9f9",
             display: "flex",
             flexDirection: "column",
             gap: "12px",
+            maxHeight: "50vh",
+            overflowY: "auto",
           }}
         >
           <div style={{ fontSize: "12px", fontWeight: 600, color: "#666", marginBottom: "4px" }}>
-            SETTINGS
+            ⚙️ SETTINGS
           </div>
 
           {/* Map Style */}
@@ -493,91 +580,6 @@ export default function EventSidebar({
               </button>
             </div>
           </div>
-        </div>
-
-        {/* Event List */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: "8px",
-          }}
-        >
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
-            {events.slice(0, 50).map((ev) => {
-              const live = isLiveNow(ev);
-              const isSelected = selectedId === ev.id;
-              return (
-                <li
-                  key={ev.id}
-                  ref={(el) => {
-                    cardRefs.current[ev.id] = el;
-                  }}
-                  onClick={() => onEventClick(ev.id)}
-                  style={{
-                    border: isSelected ? "2px solid #667eea" : "1px solid #eee",
-                    borderRadius: 10,
-                    padding: 12,
-                    cursor: "pointer",
-                    backgroundColor: isSelected ? "#f0f4ff" : "#fff",
-                    transition: "all 0.2s ease",
-                    boxShadow: isSelected ? "0 2px 8px rgba(102, 126, 234, 0.2)" : "none",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <strong style={{ fontSize: "14px", flex: 1 }}>{ev.title}</strong>
-                    {live && (
-                      <span
-                        style={{
-                          background: "#ff3b3b",
-                          color: "#fff",
-                          borderRadius: 6,
-                          padding: "2px 6px",
-                          fontSize: 10,
-                          fontWeight: 600,
-                        }}
-                      >
-                        LIVE
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ color: "#666", fontSize: 12 }}>
-                    {ev.category} • {ev.price}
-                    {ev.time ? ` • ${String(ev.time).slice(0, 16)}` : ""}
-                  </div>
-                  {ev.website && (
-                    <a
-                      href={ev.website}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        color: "#667eea",
-                        fontSize: 12,
-                        marginTop: 4,
-                        display: "inline-block",
-                      }}
-                    >
-                      View details →
-                    </a>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-
-          {events.length === 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                color: "#999",
-                padding: "40px 20px",
-                fontSize: "14px",
-              }}
-            >
-              No events found. Try adjusting your filters.
-            </div>
-          )}
         </div>
       </div>
     </>
