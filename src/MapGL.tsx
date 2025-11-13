@@ -114,7 +114,9 @@ const MapGL = forwardRef<MapGLHandle, {
   center?: [number, number];
   zoom?: number;
   themeOverride?: "light" | "dark";
-}>(function MapGL({ events, onBoundsChange, onMarkerClick, selectedEventId, center = [24.9384, 60.1699], zoom = 12, themeOverride }, ref) {
+  heatmapMode?: boolean;
+  show3DBuildings?: boolean;
+}>(function MapGL({ events, onBoundsChange, onMarkerClick, selectedEventId, center = [24.9384, 60.1699], zoom = 12, themeOverride, heatmapMode: heatmapModeProp = false, show3DBuildings: show3DBuildingsProp = true }, ref) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const currentThemeRef = useRef<string | null>(null);
@@ -128,8 +130,9 @@ const MapGL = forwardRef<MapGLHandle, {
   const popupRootRef = useRef<Root | null>(null);
   const rafRef = useRef<number>(0);
   const [showSearchButton, setShowSearchButton] = React.useState(false);
-  const [heatmapMode, setHeatmapMode] = React.useState(false);
   const initialCenterRef = useRef(center);
+  const heatmapMode = heatmapModeProp;
+  const show3DBuildings = show3DBuildingsProp;
 
   const geo = useMemo(() => eventsToGeoJSON(events as any, Date.now()), [events]);
   
@@ -1147,6 +1150,25 @@ const MapGL = forwardRef<MapGLHandle, {
     );
   }, [heatmapMode]);
 
+  // Toggle 3D buildings visibility
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer("building")) return;
+    
+    if (show3DBuildings) {
+      // Show buildings with extrusion
+      const isDark = currentThemeRef.current === "dark";
+      map.setPaintProperty("building", "fill-extrusion-height", ["get", "render_height"]);
+      map.setPaintProperty("building", "fill-extrusion-base", ["get", "render_min_height"]);
+      map.setPaintProperty("building", "fill-extrusion-opacity", isDark ? 0.8 : 0.7);
+    } else {
+      // Hide buildings by setting height to 0
+      map.setPaintProperty("building", "fill-extrusion-height", 0);
+      map.setPaintProperty("building", "fill-extrusion-base", 0);
+      map.setPaintProperty("building", "fill-extrusion-opacity", 0);
+    }
+  }, [show3DBuildings]);
+
   // Handle manual theme override changes ONLY
   useEffect(() => {
     const map = mapRef.current;
@@ -1710,35 +1732,6 @@ const MapGL = forwardRef<MapGLHandle, {
         title="Re-center to my location"
       >
         📍
-      </button>
-      
-      {/* Heatmap Mode toggle */}
-      <button
-        onClick={() => setHeatmapMode(!heatmapMode)}
-        style={{
-          position: "absolute", 
-          right: 16, 
-          top: 196, 
-          zIndex: 10,
-          padding: "12px",
-          background: heatmapMode ? "#ff6b35" : "#fff", 
-          color: heatmapMode ? "#fff" : "#333",
-          border: "none", 
-          borderRadius: 8, 
-          cursor: "pointer", 
-          fontWeight: 600,
-          fontSize: 18,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-          width: 44,
-          height: 44,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "all 0.3s ease"
-        }}
-        title={heatmapMode ? "Hide Activity Heatmap" : "Show Activity Heatmap"}
-      >
-        🔥
       </button>
     </div>
   );

@@ -57,6 +57,9 @@ export default function App() {
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [heatmapMode, setHeatmapMode] = useState(false);
+  const [show3DBuildings, setShow3DBuildings] = useState(true);
+  const [distanceUnit, setDistanceUnit] = useState<"km" | "miles">("km");
   const debouncedBounds = useDebounce(bounds, 500);
 
   // Check if user has seen onboarding
@@ -232,7 +235,7 @@ export default function App() {
         />
       )}
 
-      {/* Header with title and theme toggle */}
+      {/* Header with title only */}
       <div
         style={{
           position: "absolute",
@@ -244,32 +247,11 @@ export default function App() {
           padding: "12px 16px",
           borderRadius: 12,
           boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
         }}
       >
         <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700 }}>
           Hotspot Helsinki
         </h1>
-        <select
-          value={themeOverride ?? ""}
-          onChange={(e) => {
-            const v = e.target.value as "" | "light" | "dark";
-            setThemeOverride(v || undefined);
-          }}
-          style={{
-            padding: "6px 10px",
-            borderRadius: 6,
-            border: "1px solid #ddd",
-            fontSize: "12px",
-            background: "#fff",
-          }}
-        >
-          <option value="">🌓 Auto</option>
-          <option value="light">☀️ Light</option>
-          <option value="dark">🌙 Dark</option>
-        </select>
       </div>
 
       {/* Event count indicator */}
@@ -371,6 +353,8 @@ export default function App() {
         themeOverride={themeOverride}
         selectedEventId={selectedId}
         onMarkerClick={setSelectedId}
+        heatmapMode={heatmapMode}
+        show3DBuildings={show3DBuildings}
       />
 
       {/* Event Sidebar */}
@@ -394,6 +378,29 @@ export default function App() {
         onShowInterests={() => setShowOnboarding(true)}
         isLiveNow={isLiveNow}
         onEnableCompass={() => mapRef.current?.enableCompass()}
+        themeOverride={themeOverride}
+        onThemeChange={setThemeOverride}
+        heatmapMode={heatmapMode}
+        onHeatmapModeChange={setHeatmapMode}
+        show3DBuildings={show3DBuildings}
+        onShow3DBuildingsChange={setShow3DBuildings}
+        distanceUnit={distanceUnit}
+        onDistanceUnitChange={setDistanceUnit}
+        onApplyPreset={(preset) => {
+          if (preset === "tonight") {
+            setOnlyLive(true);
+            setActiveFilters(new Set());
+          } else if (preset === "weekend") {
+            // This weekend logic would need date filtering
+            setOnlyLive(false);
+          } else if (preset === "free") {
+            setPrice("free");
+            setActiveFilters(new Set());
+          } else if (preset === "near-me") {
+            // Trigger geolocation and set bounds
+            mapRef.current?.enableCompass();
+          }
+        }}
       />
     </div>
   );

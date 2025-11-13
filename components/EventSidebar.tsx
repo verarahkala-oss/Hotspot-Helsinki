@@ -32,6 +32,15 @@ interface EventSidebarProps {
   isLiveNow: (event: EventLite) => boolean;
   // Settings
   onEnableCompass?: () => void;
+  themeOverride?: "light" | "dark" | undefined;
+  onThemeChange: (theme: "light" | "dark" | undefined) => void;
+  heatmapMode: boolean;
+  onHeatmapModeChange: (enabled: boolean) => void;
+  show3DBuildings: boolean;
+  onShow3DBuildingsChange: (enabled: boolean) => void;
+  distanceUnit: "km" | "miles";
+  onDistanceUnitChange: (unit: "km" | "miles") => void;
+  onApplyPreset: (preset: "tonight" | "weekend" | "free" | "near-me") => void;
 }
 
 export default function EventSidebar({
@@ -51,6 +60,15 @@ export default function EventSidebar({
   onShowInterests,
   isLiveNow,
   onEnableCompass,
+  themeOverride,
+  onThemeChange,
+  heatmapMode,
+  onHeatmapModeChange,
+  show3DBuildings,
+  onShow3DBuildingsChange,
+  distanceUnit,
+  onDistanceUnitChange,
+  onApplyPreset,
 }: EventSidebarProps) {
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
@@ -231,17 +249,114 @@ export default function EventSidebar({
         </div>
 
         {/* Settings Section */}
-        {onEnableCompass && (
-          <div
-            style={{
-              padding: "12px 16px",
-              borderBottom: "1px solid #eee",
-              backgroundColor: "#f9f9f9",
-            }}
-          >
-            <div style={{ fontSize: "12px", fontWeight: 600, color: "#666", marginBottom: "8px" }}>
-              SETTINGS
-            </div>
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: "1px solid #eee",
+            backgroundColor: "#f9f9f9",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}
+        >
+          <div style={{ fontSize: "12px", fontWeight: 600, color: "#666", marginBottom: "4px" }}>
+            SETTINGS
+          </div>
+
+          {/* Map Style */}
+          <div>
+            <label style={{ fontSize: "12px", color: "#666", marginBottom: "4px", display: "block" }}>
+              Map Style
+            </label>
+            <select
+              value={themeOverride ?? ""}
+              onChange={(e) => {
+                const v = e.target.value as "" | "light" | "dark";
+                onThemeChange(v || undefined);
+              }}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid #ddd",
+                fontSize: "13px",
+                background: "#fff",
+                width: "100%",
+                cursor: "pointer",
+              }}
+            >
+              <option value="">🌓 Auto</option>
+              <option value="light">☀️ Light</option>
+              <option value="dark">🌙 Dark</option>
+            </select>
+          </div>
+
+          {/* Heatmap Mode Toggle */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label style={{ fontSize: "13px", color: "#333" }}>🔥 Activity Heatmap</label>
+            <button
+              onClick={() => onHeatmapModeChange(!heatmapMode)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "1px solid #ddd",
+                background: heatmapMode ? "#ff6b35" : "#fff",
+                color: heatmapMode ? "#fff" : "#666",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 500,
+                transition: "all 0.2s",
+              }}
+            >
+              {heatmapMode ? "ON" : "OFF"}
+            </button>
+          </div>
+
+          {/* 3D Buildings Toggle */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label style={{ fontSize: "13px", color: "#333" }}>🏢 3D Buildings</label>
+            <button
+              onClick={() => onShow3DBuildingsChange(!show3DBuildings)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "1px solid #ddd",
+                background: show3DBuildings ? "#667eea" : "#fff",
+                color: show3DBuildings ? "#fff" : "#666",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 500,
+                transition: "all 0.2s",
+              }}
+            >
+              {show3DBuildings ? "ON" : "OFF"}
+            </button>
+          </div>
+
+          {/* Distance Unit */}
+          <div>
+            <label style={{ fontSize: "12px", color: "#666", marginBottom: "4px", display: "block" }}>
+              Distance Unit
+            </label>
+            <select
+              value={distanceUnit}
+              onChange={(e) => onDistanceUnitChange(e.target.value as "km" | "miles")}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid #ddd",
+                fontSize: "13px",
+                background: "#fff",
+                width: "100%",
+                cursor: "pointer",
+              }}
+            >
+              <option value="km">🇪🇺 Kilometers (km)</option>
+              <option value="miles">🇺🇸 Miles (mi)</option>
+            </select>
+          </div>
+
+          {/* Compass Mode */}
+          {onEnableCompass && (
             <button
               onClick={onEnableCompass}
               style={{
@@ -272,8 +387,113 @@ export default function EventSidebar({
             >
               🧭 Enable Compass Mode
             </button>
+          )}
+
+          {/* Filter Presets */}
+          <div>
+            <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block" }}>
+              Quick Presets
+            </label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+              <button
+                onClick={() => onApplyPreset("tonight")}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #ddd",
+                  background: "#fff",
+                  color: "#333",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f0f4ff";
+                  e.currentTarget.style.borderColor = "#667eea";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#fff";
+                  e.currentTarget.style.borderColor = "#ddd";
+                }}
+              >
+                🌙 Tonight
+              </button>
+              <button
+                onClick={() => onApplyPreset("weekend")}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #ddd",
+                  background: "#fff",
+                  color: "#333",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f0f4ff";
+                  e.currentTarget.style.borderColor = "#667eea";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#fff";
+                  e.currentTarget.style.borderColor = "#ddd";
+                }}
+              >
+                🎉 Weekend
+              </button>
+              <button
+                onClick={() => onApplyPreset("free")}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #ddd",
+                  background: "#fff",
+                  color: "#333",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f0f4ff";
+                  e.currentTarget.style.borderColor = "#667eea";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#fff";
+                  e.currentTarget.style.borderColor = "#ddd";
+                }}
+              >
+                💸 Free
+              </button>
+              <button
+                onClick={() => onApplyPreset("near-me")}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #ddd",
+                  background: "#fff",
+                  color: "#333",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f0f4ff";
+                  e.currentTarget.style.borderColor = "#667eea";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#fff";
+                  e.currentTarget.style.borderColor = "#ddd";
+                }}
+              >
+                📍 Near Me
+              </button>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Event List */}
         <div
