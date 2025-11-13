@@ -236,6 +236,9 @@ const MapGL = forwardRef<MapGLHandle, {
         ${titleHtml}${badge}
         <div style="font-size:12px;color:#666;margin-top:4px">${properties.category} • ${properties.price}${timeDisplay}</div>
         ${ticketSection}
+        <button id="show-venue-details" style="margin-top:10px;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;border-radius:6px;cursor:pointer;font-size:12px;width:100%;text-align:left;transition:background 0.2s" onmouseover="this.style.background='#ebebeb'" onmouseout="this.style.background='#f5f5f5'">
+          ▶ View Venue Details
+        </button>
       </div>
       <div id="venue-details-container"></div>
     `;
@@ -248,17 +251,41 @@ const MapGL = forwardRef<MapGLHandle, {
     
     popupRef.current = popup;
     
-    // Render VenueDetails component
+    // Add click handler for venue details button
+    const venueButton = popupContainer.querySelector("#show-venue-details");
     const venueContainer = popupContainer.querySelector("#venue-details-container");
-    if (venueContainer && properties.title && coords[1] && coords[0]) {
-      popupRootRef.current = createRoot(venueContainer);
-      popupRootRef.current.render(
-        <VenueDetails 
-          venueName={properties.title} 
-          lat={coords[1]} 
-          lng={coords[0]} 
-        />
-      );
+    
+    if (venueButton && venueContainer && properties.title && coords[1] && coords[0]) {
+      let detailsLoaded = false;
+      
+      venueButton.addEventListener("click", () => {
+        if (!detailsLoaded) {
+          detailsLoaded = true;
+          venueButton.textContent = "▼ Venue Details";
+          
+          // Render VenueDetails component on demand
+          if (!popupRootRef.current) {
+            popupRootRef.current = createRoot(venueContainer);
+          }
+          popupRootRef.current.render(
+            <VenueDetails 
+              venueName={properties.title} 
+              lat={coords[1]} 
+              lng={coords[0]} 
+            />
+          );
+        } else {
+          // Toggle visibility
+          const container = venueContainer as HTMLElement;
+          if (container.style.display === "none") {
+            container.style.display = "block";
+            venueButton.textContent = "▼ Venue Details";
+          } else {
+            container.style.display = "none";
+            venueButton.textContent = "▶ View Venue Details";
+          }
+        }
+      });
     }
     
     return popup;
