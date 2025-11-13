@@ -618,15 +618,28 @@ const MapGL = forwardRef<MapGLHandle, {
         }
       });
 
-      // Handle clicks on LIVE markers
+      // Handle clicks on LIVE markers - zoom in and highlight
       map.on("click", "live-dot", (e:any) => {
         const f = e.features?.[0];
         if (!f) return;
         const p = f?.properties || {};
         const coords = (f?.geometry as any).coordinates;
         
-        createEventPopup(map, coords, p);
+        // Smooth zoom to the live event (zoom 16.5 for detailed view)
+        map.easeTo({
+          center: coords,
+          zoom: 16.5,
+          duration: 800,
+          pitch: 50,
+          bearing: map.getBearing() // Keep current rotation
+        });
         
+        // Wait for zoom animation, then show popup
+        setTimeout(() => {
+          createEventPopup(map, coords, p);
+        }, 400);
+        
+        // Notify parent to highlight the event card (triggers scroll + pulse)
         if (onMarkerClick && p.id) {
           onMarkerClick(String(p.id));
         }
@@ -983,7 +996,18 @@ const MapGL = forwardRef<MapGLHandle, {
           const p = f?.properties || {};
           const coords = (f?.geometry as any).coordinates;
           
-          createEventPopup(map, coords, p);
+          // Smooth zoom to the live event
+          map.easeTo({
+            center: coords,
+            zoom: 16.5,
+            duration: 800,
+            pitch: 50,
+            bearing: map.getBearing()
+          });
+          
+          setTimeout(() => {
+            createEventPopup(map, coords, p);
+          }, 400);
           
           if (onMarkerClick && p.id) {
             onMarkerClick(String(p.id));
@@ -1181,7 +1205,18 @@ const MapGL = forwardRef<MapGLHandle, {
             const p = f?.properties || {};
             const coords = (f?.geometry as any).coordinates;
             
-            createEventPopup(map, coords, p);
+            // Smooth zoom to the live event
+            map.easeTo({
+              center: coords,
+              zoom: 16.5,
+              duration: 800,
+              pitch: 50,
+              bearing: map.getBearing()
+            });
+            
+            setTimeout(() => {
+              createEventPopup(map, coords, p);
+            }, 400);
             
             if (onMarkerClick && p.id) {
               onMarkerClick(String(p.id));

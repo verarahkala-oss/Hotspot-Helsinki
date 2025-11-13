@@ -31,6 +31,7 @@ const DEMO_EVENTS: EventLite[] = [
 
 export default function App() {
   const mapRef = useRef<MapGLHandle | null>(null);
+  const cardRefs = useRef<Record<string, HTMLLIElement | null>>({});
   const [events, setEvents] = useState<EventLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +127,17 @@ export default function App() {
     setSelectedId(id);
     mapRef.current?.flyToEvent(id);
   };
+
+  // Scroll to selected card with smooth animation
+  useEffect(() => {
+    if (selectedId && cardRefs.current[selectedId]) {
+      const card = cardRefs.current[selectedId];
+      card?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center'
+      });
+    }
+  }, [selectedId]);
 
   // Auto-fly to single result
   useEffect(() => {
@@ -223,16 +235,20 @@ export default function App() {
       <ul style={{ listStyle: "none", padding: 0, marginTop: 12, display: "grid", gap: 8 }}>
         {filteredEvents.slice(0, 20).map((ev) => {
           const live = isLiveNow(ev);
+          const isSelected = selectedId === ev.id;
           return (
           <li 
             key={ev.id} 
+            ref={(el) => { cardRefs.current[ev.id] = el; }}
             onClick={() => onRowClick(ev.id)}
+            className={isSelected ? "event-card-selected" : ""}
             style={{ 
-              border: selectedId === ev.id ? "2px solid #1e90ff" : "1px solid #eee", 
+              border: isSelected ? "2px solid #1e90ff" : "1px solid #eee", 
               borderRadius: 10, 
               padding: 10,
               cursor: "pointer",
-              backgroundColor: selectedId === ev.id ? "#f0f8ff" : "transparent"
+              backgroundColor: isSelected ? "#f0f8ff" : "transparent",
+              transition: "all 0.3s ease"
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
