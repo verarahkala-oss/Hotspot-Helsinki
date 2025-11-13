@@ -4,6 +4,7 @@ import useDebounce from "./useDebounce";
 import { fetchEvents, type LinkedEvent } from "./utils/fetchEvents";
 import RadialFilterMenu, { FILTER_OPTIONS } from "../components/RadialFilterMenu";
 import TonightsPicks from "../components/TonightsPicks";
+import OnboardingModal from "../components/OnboardingModal";
 
 type EventLite = LinkedEvent;
 type Bounds = { minLon: number; minLat: number; maxLon: number; maxLat: number };
@@ -45,7 +46,27 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [onlyLive, setOnlyLive] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const debouncedBounds = useDebounce(bounds, 500);
+
+  // Check if user has seen onboarding
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true);
+    } else {
+      // Load saved interests
+      const savedInterests = localStorage.getItem("userInterests");
+      if (savedInterests) {
+        try {
+          const interests = JSON.parse(savedInterests);
+          setActiveFilters(new Set(interests));
+        } catch (e) {
+          console.error("Failed to load saved interests:", e);
+        }
+      }
+    }
+  }, []);
 
   // Fetch live events from LinkedEvents API on mount
   useEffect(() => {
@@ -161,8 +182,17 @@ export default function App() {
       } else {
         next.add(filterId);
       }
+      // Save to localStorage
+      localStorage.setItem("userInterests", JSON.stringify(Array.from(next)));
       return next;
     });
+  };
+
+  const handleOnboardingComplete = (interests: string[]) => {
+    setActiveFilters(new Set(interests));
+    setShowOnboarding(false);
+    localStorage.setItem("hasSeenOnboarding", "true");
+    localStorage.setItem("userInterests", JSON.stringify(interests));
   };
 
   // Scroll to selected card with smooth animation
@@ -187,6 +217,14 @@ export default function App() {
 
   return (
     <div style={{ padding: 16, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
+      {/* Onboarding Modal */}
+      {showOnboarding && (
+        <OnboardingModal 
+          onComplete={handleOnboardingComplete}
+          initialInterests={Array.from(activeFilters)}
+        />
+      )}
+      
       <h1 style={{ marginBottom: 8 }}>Hotspot Helsinki</h1>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
@@ -236,6 +274,21 @@ export default function App() {
         </button>
         <button onClick={() => { setQuery(""); setPrice(""); setCategory(""); setOnlyLive(false); setActiveFilters(new Set()); }} style={{ padding: "8px 12px", borderRadius: 8 }}>
           Reset
+        </button>
+        <button 
+          onClick={() => setShowOnboarding(true)}
+          style={{ 
+            padding: "8px 12px", 
+            borderRadius: 8,
+            background: activeFilters.size > 0 ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "transparent",
+            color: activeFilters.size > 0 ? "#fff" : "inherit",
+            border: activeFilters.size > 0 ? "none" : "1px solid #ddd",
+            cursor: "pointer",
+            fontWeight: 500
+          }}
+          title="Edit your interests"
+        >
+          🎯 {activeFilters.size > 0 ? `${activeFilters.size} interests` : "Set interests"}
         </button>
       </div>
 
