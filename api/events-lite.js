@@ -1,11 +1,33 @@
 // Multi-source events aggregator with Vercel KV caching (5m TTL) + in-memory micro-cache (90s)
 import { kv } from "@vercel/kv";
+import { createRateLimiter, addRateLimitHeaders } from './_lib/rateLimiter.js';
+import {
+  validateLatitude,
+  validateLongitude,
+  validateRadius,
+  validateString,
+  validateCategory,
+  validateNumber,
+  validateBbox
+} from './_lib/validation.js';
 
 const KV_KEY = "events:aggregated:v3";
 const KV_TTL_SEC = 300; // 5 minutes
 
 let CACHE = { at: 0, json: null }; // in-memory micro-cache per running instance
 const TTL_MS = 90 * 1000; // 90 seconds
+
+// Rate limiter: 50 requests per 15 minutes per IP (lower than google-places since this is heavier)
+const rateLimiter = createRateLimiter({ maxRequests: 50, windowMs: 15 * 60 * 1000 });
+
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'https://hotspot-helsinki.vercel.app',
+  'https://helsinki-hotspots.vercel.app',
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
+].filter(Boolean);
 
 // ==================== UNIFIED EVENT TYPE ====================
 /**
@@ -612,29 +634,67 @@ async function fetchMeetupEvents(bounds) {
 
 export default async function handler(req, res) {
   try {
-    // CORS
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "*");
+    // CORS with origin validation
+    const origin = req.headers.origin || req.headers.referer;
+    const isAllowedOrigin = ALLOWED_ORIGINS.some(allowed => 
+      origin && origin.startsWith(allowed)
+    );
+    
+    if (isAllowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    }
+    
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    
     if (req.method === "OPTIONS") return res.status(204).end();
+    
+    // Rate limiting
+    const limitResult = rateLimiter(req);
+    addRateLimitHeaders(res, limitResult);
+    
+    if (!limitResult.allowed) {
+      return res.status(429).json({ 
+        error: "Too many requests",
+        retryAfter: limitResult.resetTime
+      });
+    }
 
     const now = Date.now();
     const isFresh = CACHE.json && now - CACHE.at < TTL_MS;
 
-    // Parse query parameters
+    // Parse and validate query parameters
     const url = new URL(req.url, "https://dummy.local");
-    const lat = parseFloat(url.searchParams.get("lat") || "60.1699"); // Helsinki center
-    const lng = parseFloat(url.searchParams.get("lng") || "24.9384");
-    const radiusKm = Math.max(1, Math.min(50, parseFloat(url.searchParams.get("radiusKm") || "5")));
-    const limit = Math.max(1, Math.min(1000, Number(url.searchParams.get("limit")) || 200));
-    const q = (url.searchParams.get("q") || "").toLowerCase();
-    const category = url.searchParams.get("category");
+    
+    // Validate coordinates (with Helsinki defaults)
+    const latParam = url.searchParams.get("lat") || "60.1699";
+    const lngParam = url.searchParams.get("lng") || "24.9384";
+    const lat = validateLatitude(latParam);
+    const lng = validateLongitude(lngParam);
+    
+    // Validate radius
+    const radiusParam = url.searchParams.get("radiusKm") || "5";
+    const radiusKm = validateRadius(radiusParam, 1, 50);
+    
+    // Validate limit
+    const limitParam = url.searchParams.get("limit") || "200";
+    const limit = validateNumber(limitParam, 1, 1000);
+    
+    // Validate search query
+    const qParam = url.searchParams.get("q");
+    const q = qParam ? validateString(qParam, 200).toLowerCase() : "";
+    
+    // Validate category
+    const categoryParam = url.searchParams.get("category");
+    const category = categoryParam ? validateCategory(categoryParam) : null;
+    
     const freeOnly = url.searchParams.get("freeOnly") === "true";
     const liveOnly = url.searchParams.get("liveOnly") === "true";
     
-    // Legacy bbox support (convert to bounds array)
+    // Validate bbox if provided
     const bboxParam = url.searchParams.get("bbox");
-    const bounds = bboxParam ? bboxParam.split(",").map(Number) : null;
-    const hasBBox = bounds && bounds.length === 4 && bounds.every(n => Number.isFinite(n));
+    const bounds = bboxParam ? validateBbox(bboxParam) : null;
+    const hasBBox = bounds !== null;
 
     let payload;
     
