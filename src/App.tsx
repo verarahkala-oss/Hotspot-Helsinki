@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import MapGL, { MapGLHandle } from "./MapGL";
 import useDebounce from "./useDebounce";
 import { fetchEvents, type LinkedEvent } from "./utils/fetchEvents";
+import RadialFilterMenu, { FILTER_OPTIONS } from "../components/RadialFilterMenu";
 
 type EventLite = LinkedEvent;
 type Bounds = { minLon: number; minLat: number; maxLon: number; maxLat: number };
@@ -42,6 +43,7 @@ export default function App() {
   const [themeOverride, setThemeOverride] = useState<"light" | "dark" | undefined>(undefined);
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [onlyLive, setOnlyLive] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const debouncedBounds = useDebounce(bounds, 500);
 
   // Fetch live events from LinkedEvents API on mount
@@ -80,7 +82,7 @@ export default function App() {
     };
   }, []); // Only run once on mount
 
-  // Filter events by query, price, category, bounds, and LIVE status
+  // Filter events by query, price, category, bounds, radial filters, and LIVE status
   const filteredEvents = useMemo(() => {
     let filtered = events;
     
@@ -104,6 +106,28 @@ export default function App() {
         e.category.toLowerCase().includes(category.toLowerCase())
       );
     }
+
+    // Filter by radial menu filters
+    if (activeFilters.size > 0) {
+      filtered = filtered.filter(e => {
+        // Check if event matches any active filter
+        return Array.from(activeFilters).some(filterId => {
+          const filterOption = FILTER_OPTIONS.find(opt => opt.id === filterId);
+          if (!filterOption) return false;
+          
+          // Special handling for "free" filter
+          if (filterId === "free") {
+            return e.price === "free";
+          }
+          
+          // Check if any keyword matches the event's category or title
+          const searchText = `${e.category} ${e.title}`.toLowerCase();
+          return filterOption.keywords.some(keyword => 
+            searchText.includes(keyword.toLowerCase())
+          );
+        });
+      });
+    }
     
     // Filter by bounds
     if (debouncedBounds) {
@@ -121,11 +145,23 @@ export default function App() {
     }
     
     return filtered;
-  }, [events, query, price, category, debouncedBounds, onlyLive]);
+  }, [events, query, price, category, debouncedBounds, onlyLive, activeFilters]);
 
   const onRowClick = (id: string) => {
     setSelectedId(id);
     mapRef.current?.flyToEvent(id);
+  };
+
+  const handleFilterToggle = (filterId: string) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(filterId)) {
+        next.delete(filterId);
+      } else {
+        next.add(filterId);
+      }
+      return next;
+    });
   };
 
   // Scroll to selected card with smooth animation
@@ -197,7 +233,7 @@ export default function App() {
         >
           {onlyLive ? "🔴 LIVE NOW" : "Show LIVE"}
         </button>
-        <button onClick={() => { setQuery(""); setPrice(""); setCategory(""); setOnlyLive(false); }} style={{ padding: "8px 12px", borderRadius: 8 }}>
+        <button onClick={() => { setQuery(""); setPrice(""); setCategory(""); setOnlyLive(false); setActiveFilters(new Set()); }} style={{ padding: "8px 12px", borderRadius: 8 }}>
           Reset
         </button>
       </div>
@@ -230,6 +266,12 @@ export default function App() {
         themeOverride={themeOverride}
         selectedEventId={selectedId}
         onMarkerClick={setSelectedId}
+      />
+
+      {/* Radial Filter Menu */}
+      <RadialFilterMenu 
+        activeFilters={activeFilters}
+        onFilterToggle={handleFilterToggle}
       />
 
       <ul style={{ listStyle: "none", padding: 0, marginTop: 12, display: "grid", gap: 8 }}>
