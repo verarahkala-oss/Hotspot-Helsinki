@@ -8,6 +8,7 @@ import EventSidebar from "../components/EventSidebar";
 import BottomNavigation, { NavTab } from "../components/BottomNavigation";
 import FilterBar, { QuickFilter } from "../components/FilterBar";
 import { cacheEvents, getCachedEvents } from "./utils/eventCache";
+import { getLikedEvents, getCategoryPreferenceScore, addRecentSearch } from "./utils/personalization";
 
 const FILTER_OPTIONS = [
   { id: "music", label: "🎵 Music", keywords: ["music", "concert", "band", "dj", "jazz", "rock", "pop", "classical"] },
@@ -75,7 +76,11 @@ function scoreEvent(
     score += distanceScore;
   }
   
-  // 3. CATEGORY MATCH - +200 points per matching filter
+  // 3. PERSONALIZATION - Up to +500 points for liked categories
+  const categoryPrefScore = getCategoryPreferenceScore(event.category);
+  score += categoryPrefScore;
+  
+  // 4. CATEGORY MATCH - +200 points per matching filter
   if (activeFilters.size > 0) {
     const matchCount = Array.from(activeFilters).filter(filterId => {
       const filterOption = FILTER_OPTIONS.find(opt => opt.id === filterId);
@@ -88,7 +93,7 @@ function scoreEvent(
     score += matchCount * 200;
   }
   
-  // 4. TIME UNTIL START - Slight bonus for events starting soon
+  // 5. TIME UNTIL START - Slight bonus for events starting soon
   if (event.start) {
     const startTime = Date.parse(event.start);
     const hoursUntilStart = (startTime - currentTime) / (1000 * 60 * 60);
@@ -395,6 +400,15 @@ export default function App() {
     return filtered;
   }, [events, query, price, category, debouncedBounds, onlyLive, activeFilters, currentTime, userLocation, activeQuickFilters, maxDistance]);
 
+  // Show only liked events when Saved tab is active
+  const displayEvents = useMemo(() => {
+    if (activeTab === "saved") {
+      const likedEventIds = new Set(getLikedEvents().map(e => e.id));
+      return filteredEvents.filter(e => likedEventIds.has(e.id));
+    }
+    return filteredEvents;
+  }, [activeTab, filteredEvents]);
+
   const onRowClick = (id: string) => {
     setSelectedId(id);
     mapRef.current?.flyToEvent(id);
@@ -654,14 +668,20 @@ export default function App() {
           setSidebarOpen(false);
           setActiveTab("map");
         }}
-        events={filteredEvents}
+        events={displayEvents}
         selectedId={selectedId}
         onEventClick={(id) => {
           setSelectedId(id);
           mapRef.current?.flyToEvent(id, { zoom: 16 });
         }}
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={(newQuery) => {
+          setQuery(newQuery);
+          // Track search after 2+ characters
+          if (newQuery.trim().length >= 2) {
+            addRecentSearch(newQuery);
+          }
+        }}
         price={price}
         onPriceChange={setPrice}
         onlyLive={onlyLive}

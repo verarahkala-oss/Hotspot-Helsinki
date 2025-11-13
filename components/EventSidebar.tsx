@@ -1,5 +1,6 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { SkeletonLoader } from "./SkeletonLoader";
+import { isEventLiked, toggleLikeEvent, getSmartSuggestions, getLikedEvents } from "../src/utils/personalization";
 
 type EventLite = {
   id: string;
@@ -80,6 +81,12 @@ export default function EventSidebar({
   onRetry,
 }: EventSidebarProps) {
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({});
+  
+  // Track liked events for UI updates
+  const [likedEvents, setLikedEvents] = useState<Set<string>>(() => {
+    const liked = require("../src/utils/personalization").getLikedEvents();
+    return new Set(liked.map((e: any) => e.id));
+  });
 
   // Scroll to selected card
   useEffect(() => {
@@ -350,6 +357,26 @@ export default function EventSidebar({
             </div>
           )}
 
+          {/* Smart Suggestions - only show when not loading and have liked events */}
+          {!loading && getLikedEvents().length > 0 && events.length > 0 && (
+            <div
+              style={{
+                backgroundColor: "#f8f9ff",
+                border: "1px solid #e0e7ff",
+                borderRadius: 12,
+                padding: "12px 16px",
+                marginBottom: "16px",
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#667eea", marginBottom: 8 }}>
+                💡 Because you liked {getLikedEvents()[0]?.category || "similar"} events
+              </div>
+              <div style={{ fontSize: 13, color: "#666" }}>
+                {getSmartSuggestions()[0]}
+              </div>
+            </div>
+          )}
+
           {/* Show skeleton loader when loading and no events */}
           {loading && events.length === 0 ? (
             <div style={{ display: "grid", gap: 12 }}>
@@ -398,22 +425,64 @@ export default function EventSidebar({
                     <strong style={{ fontSize: "15px", flex: 1, lineHeight: 1.4, color: "#1a1a1a" }}>
                       {ev.title}
                     </strong>
-                    {live && (
-                      <span
-                        style={{
-                          background: "linear-gradient(135deg, #ff3b3b 0%, #ff6b6b 100%)",
-                          color: "#fff",
-                          borderRadius: 8,
-                          padding: "4px 8px",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          letterSpacing: "0.5px",
-                          boxShadow: "0 2px 8px rgba(255, 59, 59, 0.3)",
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {/* Like button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const nowLiked = toggleLikeEvent({
+                            id: ev.id,
+                            title: ev.title,
+                            category: ev.category
+                          });
+                          // Force re-render by updating a state
+                          setLikedEvents(prev => {
+                            const next = new Set(prev);
+                            if (nowLiked) {
+                              next.add(ev.id);
+                            } else {
+                              next.delete(ev.id);
+                            }
+                            return next;
+                          });
                         }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: 18,
+                          padding: 4,
+                          display: "flex",
+                          alignItems: "center",
+                          transition: "transform 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "scale(1.2)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "scale(1)";
+                        }}
+                        title={likedEvents.has(ev.id) ? "Unlike event" : "Like event"}
                       >
-                        🔴 LIVE
-                      </span>
-                    )}
+                        {likedEvents.has(ev.id) ? "❤️" : "🤍"}
+                      </button>
+                      {live && (
+                        <span
+                          style={{
+                            background: "linear-gradient(135deg, #ff3b3b 0%, #ff6b6b 100%)",
+                            color: "#fff",
+                            borderRadius: 8,
+                            padding: "4px 8px",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            letterSpacing: "0.5px",
+                            boxShadow: "0 2px 8px rgba(255, 59, 59, 0.3)",
+                          }}
+                        >
+                          🔴 LIVE
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div style={{ 
                     color: "#666", 
