@@ -49,19 +49,29 @@ function eventsToGeoJSON(events: Ev[], now = Date.now()) {
     type: "FeatureCollection",
     features: (events || [])
       .filter((e) => e.lat !== null && e.lng !== null)
-      .map((e: Ev) => ({
-        type: "Feature",
-        properties: { 
-          id: e.id, 
-          title: e.title, 
-          category: e.category, 
-          price: e.price, 
-          time: e.time || "", 
-          website: e.website || "",
-          isLive: isLiveNow(e, now)
-        },
-        geometry: { type: "Point", coordinates: [e.lng!, e.lat!] }
-      }))
+      .map((e: Ev) => {
+        const isLive = isLiveNow(e, now);
+        // Simple score: live events get 1000, others get 500-700 based on category
+        let score = 600;
+        if (isLive) score = 1000;
+        else if (e.price === "free") score += 50;
+        else if (["music", "food", "arts"].includes(e.category)) score += 100;
+        
+        return {
+          type: "Feature",
+          properties: { 
+            id: e.id, 
+            title: e.title, 
+            category: e.category, 
+            price: e.price, 
+            time: e.time || "", 
+            website: e.website || "",
+            isLive,
+            score
+          },
+          geometry: { type: "Point", coordinates: [e.lng!, e.lat!] }
+        };
+      })
   } as any;
 }
 
@@ -382,15 +392,33 @@ const MapGL = forwardRef<MapGLHandle, {
         paint: { "text-color": "#333" }
       });
 
-      // Unclustered hotspots (Apple-like red) - non-selected
+      // Unclustered hotspots with category-based colors and size by distance
       map.addLayer({
         id: "unclustered",
         type: "circle",
         source: "events",
-        filter: ["all", ["!", ["has", "point_count"]], ["!=", ["get", "id"], ["literal", selectedEventId ?? "___none___"]]],
+        filter: ["all", ["!", ["has", "point_count"]], ["!=", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
         paint: {
-          "circle-color": "#ff3b3b",
-          "circle-radius": 6,
+          "circle-color": [
+            "match",
+            ["get", "category"],
+            "music", "#ff3b3b",      // Red for music
+            "nightlife", "#ff3b3b",  // Red for nightlife
+            "food", "#ffa726",       // Orange/Yellow for food
+            "arts", "#42a5f5",       // Blue for arts/culture
+            "sports", "#66bb6a",     // Green for sports/outdoors
+            "family", "#66bb6a",     // Green for family
+            "tech", "#9c27b0",       // Purple for tech
+            "#999999"                // Gray for other
+          ],
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["get", "score"],
+            0, 5,      // Low score = smaller
+            500, 7,    // Medium score
+            1000, 9    // High score = bigger
+          ],
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 1.5
         }
@@ -401,16 +429,27 @@ const MapGL = forwardRef<MapGLHandle, {
         id: "unclustered-selected",
         type: "circle",
         source: "events",
-        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], ["literal", selectedEventId ?? "___none___"]]],
+        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
         paint: {
-          "circle-color": "#ff3b3b",
-          "circle-radius": 8,
+          "circle-color": [
+            "match",
+            ["get", "category"],
+            "music", "#ff3b3b",
+            "nightlife", "#ff3b3b",
+            "food", "#ffa726",
+            "arts", "#42a5f5",
+            "sports", "#66bb6a",
+            "family", "#66bb6a",
+            "tech", "#9c27b0",
+            "#999999"
+          ],
+          "circle-radius": 10,
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 3
         }
       });
 
-      // LIVE markers: animated glow ring
+      // LIVE markers: animated glow ring (always red with pulse)
       map.addLayer({
         id: "live-glow",
         type: "circle",
@@ -424,17 +463,28 @@ const MapGL = forwardRef<MapGLHandle, {
         }
       });
 
-      // LIVE markers: solid dot on top
+      // LIVE markers: solid dot on top (category colored but brighter)
       map.addLayer({
         id: "live-dot",
         type: "circle",
         source: "events",
         filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isLive"], true]],
         paint: {
-          "circle-color": "#ff3b3b",
-          "circle-radius": 6,
+          "circle-color": [
+            "match",
+            ["get", "category"],
+            "music", "#ff1744",      // Bright red for music
+            "nightlife", "#ff1744",  // Bright red for nightlife
+            "food", "#ff9800",       // Bright orange for food
+            "arts", "#2196f3",       // Bright blue for arts
+            "sports", "#4caf50",     // Bright green for sports
+            "family", "#4caf50",     // Bright green for family
+            "tech", "#ab47bc",       // Bright purple for tech
+            "#ff3b3b"                // Default bright red
+          ],
+          "circle-radius": 7,
           "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 1.5
+          "circle-stroke-width": 2
         }
       });
 
@@ -530,7 +580,7 @@ const MapGL = forwardRef<MapGLHandle, {
       emitBounds();
     });
 
-    // Handle geolocation success - recenter and zoom to user location
+    // Handle geolocation success - recenter and zoom to user location with 2km radius
     map.on("geolocate", (e: any) => {
       const lat = e.coords.latitude;
       const lng = e.coords.longitude;
@@ -545,10 +595,57 @@ const MapGL = forwardRef<MapGLHandle, {
       // Update heading cone if available
       setHeadingDeg(heading);
       
-      // Smoothly recenter to user location with zoom 15
+      // Add 2km radius circle around user location
+      if (!map.getSource("user-radius")) {
+        map.addSource("user-radius", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [lng, lat]
+            },
+            properties: {}
+          } as any
+        });
+        
+        // Add circle layer (2km radius = ~2000m at this zoom)
+        map.addLayer({
+          id: "user-radius-circle",
+          type: "circle",
+          source: "user-radius",
+          paint: {
+            "circle-radius": [
+              "interpolate",
+              ["exponential", 2],
+              ["zoom"],
+              10, 5,
+              14, 80,
+              16, 320
+            ],
+            "circle-color": "#2196f3",
+            "circle-opacity": 0.1,
+            "circle-stroke-color": "#2196f3",
+            "circle-stroke-width": 2,
+            "circle-stroke-opacity": 0.4
+          }
+        }, "clusters"); // Add below clusters so it doesn't cover markers
+      } else {
+        // Update existing circle position
+        (map.getSource("user-radius") as any).setData({
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [lng, lat]
+          },
+          properties: {}
+        });
+      }
+      
+      // Zoom closer to show ~2km area (zoom 14-15 shows roughly 2-3km radius)
       map.easeTo({ 
         center: [lng, lat], 
-        zoom: 15, 
+        zoom: 14.5, 
         duration: 900, 
         pitch: 45 
       });
@@ -1030,6 +1127,39 @@ const MapGL = forwardRef<MapGLHandle, {
   return (
     <div style={{ position: "relative" }}>
       <div ref={containerRef} style={{ height: "70vh", width: "100%", borderRadius: 12 }} />
+      
+      {/* Re-center to my location button */}
+      <button
+        onClick={() => {
+          if (geolocateRef.current) {
+            geolocateRef.current.trigger();
+          }
+        }}
+        style={{
+          position: "absolute", 
+          right: 16, 
+          top: 140, 
+          zIndex: 10,
+          padding: "12px",
+          background: "#fff", 
+          color: "#333",
+          border: "none", 
+          borderRadius: 8, 
+          cursor: "pointer", 
+          fontWeight: 600,
+          fontSize: 18,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          width: 44,
+          height: 44,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}
+        title="Re-center to my location"
+      >
+        📍
+      </button>
+      
       <button
         onClick={enableCompassFallback}
         style={{
