@@ -1,3 +1,5 @@
+import { fetchEventbriteEvents } from './fetchEventbriteEvents';
+
 export interface LinkedEvent {
   id: string;
   title: string;
@@ -170,10 +172,16 @@ export async function fetchEvents(): Promise<LinkedEvent[]> {
 
     console.log(`Fetched ${events.length} events from LinkedEvents API`);
     
-    // Cache the results
-    saveToCache(events);
+    // Fetch events from Eventbrite API and merge
+    const eventbriteEvents = await fetchEventbriteEvents();
+    const allEvents = [...events, ...eventbriteEvents];
     
-    return events;
+    console.log(`Total events: ${allEvents.length} (LinkedEvents: ${events.length}, Eventbrite: ${eventbriteEvents.length})`);
+    
+    // Cache the merged results
+    saveToCache(allEvents);
+    
+    return allEvents;
   } catch (error) {
     console.error('Failed to fetch events from LinkedEvents API:', error);
     throw error;
