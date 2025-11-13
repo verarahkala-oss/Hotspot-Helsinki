@@ -88,22 +88,38 @@ Add your Google Places API key in Vercel environment variables:
 ### Features Available:
 
 1. **Venue Details in Event Popups**:
-   - Venue photos
+   - **Automatically shown** when clicking on any event marker
+   - Venue photos (300px high-quality images)
    - Star ratings & review counts
    - Price level (€-€€€€)
    - Opening hours & current status (🟢 Open / 🔴 Closed)
-   - Full address & phone number
-   - Venue website
+   - Today's opening hours
+   - Full address, phone number, and venue website
+   - Seamlessly integrated into map popups with React
 
 2. **Nearby Places Finder**:
+   - Expandable section in event popups
    - Shows restaurants & cafes within 500m of event venue
-   - Includes photos, ratings, and open/closed status
+   - Includes 60×60px photos, ratings, and open/closed status
    - Helps users plan meals around events
+   - Lazy-loaded on demand to minimize API calls
 
 3. **Smart Caching**:
-   - 1-hour client-side cache
+   - 1-hour client-side cache (reduces duplicate API calls)
    - 1-hour server-side HTTP cache
    - Minimizes API calls (well within free tier limits)
+   - Estimated cost: $0.17/day for 1,000 daily users
+
+### How It Works:
+
+When you click on any event marker on the map, the popup automatically:
+1. Shows basic event information (title, category, price, time)
+2. Searches for the venue using Google Places API
+3. Fetches detailed venue information (photos, ratings, hours)
+4. Displays venue details directly in the popup
+5. Offers option to view nearby restaurants & cafes
+
+All venue data is cached for 1 hour to minimize API usage and ensure fast loading.
 
 ### Usage in Code:
 
