@@ -103,6 +103,7 @@ function eventsToGeoJSON(events: Ev[], now = Date.now()) {
 
 export type MapGLHandle = {
   flyToEvent: (id: string, opts?: { zoom?: number; openPopup?: boolean }) => void;
+  enableCompass: () => void;
 };
 
 const MapGL = forwardRef<MapGLHandle, {
@@ -327,7 +328,8 @@ const MapGL = forwardRef<MapGLHandle, {
       if (onMarkerClick) {
         onMarkerClick(id);
       }
-    }
+    },
+    enableCompass: enableCompassFallback
   }), [byId, onMarkerClick, createEventPopup]);
   
   // Set heading and rotate the cone
@@ -1737,28 +1739,6 @@ const MapGL = forwardRef<MapGLHandle, {
         title={heatmapMode ? "Hide Activity Heatmap" : "Show Activity Heatmap"}
       >
         🔥
-      </button>
-      
-      <button
-        onClick={enableCompassFallback}
-        style={{
-          position: "absolute", 
-          right: 16, 
-          bottom: 16, 
-          zIndex: 10,
-          padding: "10px 12px",
-          background: "#0b74ff", 
-          color: "#fff",
-          border: "none", 
-          borderRadius: 10, 
-          cursor: "pointer", 
-          fontWeight: 600,
-          fontSize: 14,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
-        }}
-        title="Enable device compass for heading direction"
-      >
-        🧭 Enable Compass
       </button>
     </div>
   );

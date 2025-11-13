@@ -393,6 +393,7 @@ export default function App() {
         activeFilters={activeFilters}
         onShowInterests={() => setShowOnboarding(true)}
         isLiveNow={isLiveNow}
+        onEnableCompass={() => mapRef.current?.enableCompass()}
       />
     </div>
   );

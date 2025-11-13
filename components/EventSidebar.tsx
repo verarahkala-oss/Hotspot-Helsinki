@@ -30,6 +30,8 @@ interface EventSidebarProps {
   activeFilters: Set<string>;
   onShowInterests: () => void;
   isLiveNow: (event: EventLite) => boolean;
+  // Settings
+  onEnableCompass?: () => void;
 }
 
 export default function EventSidebar({
@@ -48,6 +50,7 @@ export default function EventSidebar({
   activeFilters,
   onShowInterests,
   isLiveNow,
+  onEnableCompass,
 }: EventSidebarProps) {
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
@@ -226,6 +229,51 @@ export default function EventSidebar({
             </button>
           </div>
         </div>
+
+        {/* Settings Section */}
+        {onEnableCompass && (
+          <div
+            style={{
+              padding: "12px 16px",
+              borderBottom: "1px solid #eee",
+              backgroundColor: "#f9f9f9",
+            }}
+          >
+            <div style={{ fontSize: "12px", fontWeight: 600, color: "#666", marginBottom: "8px" }}>
+              SETTINGS
+            </div>
+            <button
+              onClick={onEnableCompass}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "1px solid #0b74ff",
+                background: "#fff",
+                color: "#0b74ff",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 500,
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#0b74ff";
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#fff";
+                e.currentTarget.style.color = "#0b74ff";
+              }}
+              title="Enable device compass for navigation"
+            >
+              🧭 Enable Compass Mode
+            </button>
+          </div>
+        )}
 
         {/* Event List */}
         <div
