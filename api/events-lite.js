@@ -198,11 +198,21 @@ async function fetchLinkedEvents(bounds) {
         venueName.includes("internet") ||
         venueName.includes("online") ||
         venueName.includes("verkko") ||
+        venueName.includes("video") ||
+        venueName.includes("zoom") ||
+        venueName.includes("stream") ||
+        venueName.includes("etä") || // remote in Finnish
         description.includes("online-tapahtuma") ||
         description.includes("online event") ||
         description.includes("virtual event") ||
+        description.includes("etätapahtuma") ||
+        description.includes("zoom") ||
+        description.includes("streamattava") ||
+        description.includes("streamattava") ||
         title.includes("online") ||
-        title.includes("verkossa")
+        title.includes("verkossa") ||
+        title.includes("zoom") ||
+        title.includes("stream")
       ) {
         continue;
       }
@@ -276,11 +286,20 @@ async function fetchMyHelsinkiEvents(bounds) {
         venueName.includes("internet") ||
         venueName.includes("online") ||
         venueName.includes("verkko") ||
+        venueName.includes("video") ||
+        venueName.includes("zoom") ||
+        venueName.includes("stream") ||
+        venueName.includes("etä") || // remote in Finnish
         description.includes("online-tapahtuma") ||
         description.includes("online event") ||
         description.includes("virtual event") ||
+        description.includes("etätapahtuma") ||
+        description.includes("zoom") ||
+        description.includes("streamattava") ||
         title.includes("online") ||
-        title.includes("verkossa")
+        title.includes("verkossa") ||
+        title.includes("zoom") ||
+        title.includes("stream")
       ) {
         continue;
       }
