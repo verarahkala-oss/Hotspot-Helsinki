@@ -117,6 +117,7 @@ const MapGL = forwardRef<MapGLHandle, {
   const popupRootRef = useRef<Root | null>(null);
   const rafRef = useRef<number>(0);
   const [showSearchButton, setShowSearchButton] = React.useState(false);
+  const [heatmapMode, setHeatmapMode] = React.useState(false);
   const initialCenterRef = useRef(center);
 
   const geo = useMemo(() => eventsToGeoJSON(events as any, Date.now()), [events]);
@@ -398,6 +399,64 @@ const MapGL = forwardRef<MapGLHandle, {
           "family": ["+", ["case", ["==", ["get", "category"], "family"], 1, 0]],
           "tech": ["+", ["case", ["==", ["get", "category"], "tech"], 1, 0]]
         } as any
+      });
+
+      // HEATMAP LAYER - Shows activity density
+      map.addLayer({
+        id: "events-heatmap",
+        type: "heatmap",
+        source: "events",
+        maxzoom: 15,
+        paint: {
+          // Increase weight for live events
+          "heatmap-weight": [
+            "interpolate",
+            ["linear"],
+            ["get", "score"],
+            0, 0.5,
+            1000, 2  // Live events have more weight
+          ],
+          // Increase intensity as zoom level increases
+          "heatmap-intensity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0, 0.5,
+            15, 1.5
+          ],
+          // Color ramp: cool (few events) to warm (many events)
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0, "rgba(33,102,172,0)",
+            0.2, "rgb(103,169,207)",
+            0.4, "rgb(209,229,240)",
+            0.6, "rgb(253,219,199)",
+            0.8, "rgb(239,138,98)",
+            0.9, "rgb(255,201,101)",
+            1, "rgb(178,24,43)"
+          ],
+          // Adjust radius by zoom level
+          "heatmap-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0, 2,
+            15, 20
+          ],
+          // Fade out heatmap at high zoom levels
+          "heatmap-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            7, 0.8,
+            15, 0.3
+          ]
+        },
+        layout: {
+          visibility: "none" // Hidden by default
+        }
       });
 
       // Large clusters (200+ events) - biggest circles
@@ -967,6 +1026,18 @@ const MapGL = forwardRef<MapGLHandle, {
     (map.getSource("events") as any).setData(geo);
   }, [geo]);
 
+  // Toggle heatmap visibility
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer("events-heatmap")) return;
+    
+    map.setLayoutProperty(
+      "events-heatmap",
+      "visibility",
+      heatmapMode ? "visible" : "none"
+    );
+  }, [heatmapMode]);
+
   // Handle manual theme override changes ONLY
   useEffect(() => {
     const map = mapRef.current;
@@ -1479,6 +1550,35 @@ const MapGL = forwardRef<MapGLHandle, {
         title="Re-center to my location"
       >
         📍
+      </button>
+      
+      {/* Heatmap Mode toggle */}
+      <button
+        onClick={() => setHeatmapMode(!heatmapMode)}
+        style={{
+          position: "absolute", 
+          right: 16, 
+          top: 196, 
+          zIndex: 10,
+          padding: "12px",
+          background: heatmapMode ? "#ff6b35" : "#fff", 
+          color: heatmapMode ? "#fff" : "#333",
+          border: "none", 
+          borderRadius: 8, 
+          cursor: "pointer", 
+          fontWeight: 600,
+          fontSize: 18,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          width: 44,
+          height: 44,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.3s ease"
+        }}
+        title={heatmapMode ? "Hide Activity Heatmap" : "Show Activity Heatmap"}
+      >
+        🔥
       </button>
       
       <button
