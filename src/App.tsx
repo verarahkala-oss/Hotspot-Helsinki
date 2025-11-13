@@ -5,6 +5,7 @@ import { fetchEvents, type LinkedEvent } from "./utils/fetchEvents";
 import RadialFilterMenu, { FILTER_OPTIONS } from "../components/RadialFilterMenu";
 import TonightsPicks from "../components/TonightsPicks";
 import OnboardingModal from "../components/OnboardingModal";
+import EventSidebar from "../components/EventSidebar";
 
 type EventLite = LinkedEvent;
 type Bounds = { minLon: number; minLat: number; maxLon: number; maxLat: number };
@@ -47,6 +48,7 @@ export default function App() {
   const [onlyLive, setOnlyLive] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const debouncedBounds = useDebounce(bounds, 500);
 
   // Check if user has seen onboarding
@@ -195,16 +197,13 @@ export default function App() {
     localStorage.setItem("userInterests", JSON.stringify(interests));
   };
 
-  // Scroll to selected card with smooth animation
-  useEffect(() => {
-    if (selectedId && cardRefs.current[selectedId]) {
-      const card = cardRefs.current[selectedId];
-      card?.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'center'
-      });
-    }
-  }, [selectedId]);
+  const handleReset = () => {
+    setQuery("");
+    setPrice("");
+    setCategory("");
+    setOnlyLive(false);
+    setActiveFilters(new Set());
+  };
 
   // Auto-fly to single result
   useEffect(() => {
@@ -216,7 +215,7 @@ export default function App() {
   }, [filteredEvents]);
 
   return (
-    <div style={{ padding: 16, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
+    <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden" }}>
       {/* Onboarding Modal */}
       {showOnboarding && (
         <OnboardingModal 
@@ -224,85 +223,84 @@ export default function App() {
           initialInterests={Array.from(activeFilters)}
         />
       )}
-      
-      <h1 style={{ marginBottom: 8 }}>Hotspot Helsinki</h1>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-        <input
-          placeholder="Search events…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ padding: 8, borderRadius: 8, border: "1px solid #ddd", minWidth: 200 }}
-        />
-        <select value={price} onChange={(e) => setPrice(e.target.value as any)} style={{ padding: 8, borderRadius: 8 }}>
-          <option value="">All prices</option>
-          <option value="free">Free</option>
-          <option value="paid">Paid</option>
-        </select>
-        {/* Category filter temporarily disabled - LinkedEvents uses different categorization */}
-        {/*
-        <select value={category} onChange={(e) => setCategory(e.target.value as any)} style={{ padding: 8, borderRadius: 8 }}>
-          <option value="">All categories</option>
-          <option value="music">Music</option>
-          <option value="food">Food</option>
-          <option value="sports">Sports</option>
-          <option value="family">Family</option>
-          <option value="other">Other</option>
-        </select>
-        */}
-        <select value={themeOverride ?? ""} onChange={(e) => {
-          const v = e.target.value as "" | "light" | "dark";
-          setThemeOverride(v || undefined);
-        }} style={{ padding: 8, borderRadius: 8 }}>
-          <option value="">Theme: System</option>
-          <option value="light">Theme: Light</option>
-          <option value="dark">Theme: Dark</option>
-        </select>
-        <button 
-          onClick={() => setOnlyLive(v => !v)}
-          style={{ 
-            padding: "8px 12px", 
-            borderRadius: 8,
-            background: onlyLive ? "#ff3b3b" : "transparent",
-            color: onlyLive ? "#fff" : "inherit",
-            border: onlyLive ? "none" : "1px solid #ddd",
-            fontWeight: onlyLive ? 600 : 400,
-            cursor: "pointer"
+      {/* Header with title and theme toggle */}
+      <div
+        style={{
+          position: "absolute",
+          top: 16,
+          left: 16,
+          zIndex: 10,
+          background: "rgba(255, 255, 255, 0.95)",
+          backdropFilter: "blur(10px)",
+          padding: "12px 16px",
+          borderRadius: 12,
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700 }}>
+          Hotspot Helsinki
+        </h1>
+        <select
+          value={themeOverride ?? ""}
+          onChange={(e) => {
+            const v = e.target.value as "" | "light" | "dark";
+            setThemeOverride(v || undefined);
+          }}
+          style={{
+            padding: "6px 10px",
+            borderRadius: 6,
+            border: "1px solid #ddd",
+            fontSize: "12px",
+            background: "#fff",
           }}
         >
-          {onlyLive ? "🔴 LIVE NOW" : "Show LIVE"}
-        </button>
-        <button onClick={() => { setQuery(""); setPrice(""); setCategory(""); setOnlyLive(false); setActiveFilters(new Set()); }} style={{ padding: "8px 12px", borderRadius: 8 }}>
-          Reset
-        </button>
-        <button 
-          onClick={() => setShowOnboarding(true)}
-          style={{ 
-            padding: "8px 12px", 
-            borderRadius: 8,
-            background: activeFilters.size > 0 ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "transparent",
-            color: activeFilters.size > 0 ? "#fff" : "inherit",
-            border: activeFilters.size > 0 ? "none" : "1px solid #ddd",
-            cursor: "pointer",
-            fontWeight: 500
-          }}
-          title="Edit your interests"
-        >
-          🎯 {activeFilters.size > 0 ? `${activeFilters.size} interests` : "Set interests"}
-        </button>
+          <option value="">🌓 Auto</option>
+          <option value="light">☀️ Light</option>
+          <option value="dark">🌙 Dark</option>
+        </select>
       </div>
 
-      <div style={{ marginBottom: 8, color: error ? "#c00" : "#444", display: "flex", alignItems: "center", gap: 8 }}>
-        {loading && <span style={{ 
-          display: "inline-block", 
-          width: 16, 
-          height: 16, 
-          border: "2px solid #ddd", 
-          borderTop: "2px solid #333",
-          borderRadius: "50%",
-          animation: "spin 1s linear infinite"
-        }} />}
-        {error ? `⚠️ ${error} (showing demo data)` : loading ? "Loading events from LinkedEvents API..." : `${filteredEvents.length} events in view`}
+      {/* Event count indicator */}
+      <div
+        style={{
+          position: "absolute",
+          top: 76,
+          left: 16,
+          zIndex: 10,
+          background: "rgba(255, 255, 255, 0.95)",
+          backdropFilter: "blur(10px)",
+          padding: "8px 12px",
+          borderRadius: 8,
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+          fontSize: "13px",
+          color: error ? "#c00" : "#666",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        {loading && (
+          <span
+            style={{
+              display: "inline-block",
+              width: 14,
+              height: 14,
+              border: "2px solid #ddd",
+              borderTop: "2px solid #667eea",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          />
+        )}
+        {error
+          ? `⚠️ ${error}`
+          : loading
+          ? "Loading..."
+          : `${filteredEvents.length} events`}
       </div>
 
       <style>{`
@@ -320,6 +318,7 @@ export default function App() {
         }}
       />
 
+      {/* Map */}
       <MapGL 
         ref={mapRef}
         events={filteredEvents} 
@@ -331,43 +330,68 @@ export default function App() {
         onMarkerClick={setSelectedId}
       />
 
+      {/* Sidebar Toggle Button */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        style={{
+          position: "absolute",
+          right: 16,
+          top: 16,
+          zIndex: 10,
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          color: "#fff",
+          border: "none",
+          borderRadius: 12,
+          padding: "12px 18px",
+          fontSize: "15px",
+          fontWeight: 600,
+          cursor: "pointer",
+          boxShadow: "0 4px 12px rgba(102, 126, 234, 0.4)",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          transition: "all 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.boxShadow = "0 6px 16px rgba(102, 126, 234, 0.5)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.4)";
+        }}
+      >
+        <span style={{ fontSize: "18px" }}>📋</span>
+        Events ({filteredEvents.length})
+      </button>
+
+      {/* Event Sidebar */}
+      <EventSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        events={filteredEvents}
+        selectedId={selectedId}
+        onEventClick={(id) => {
+          setSelectedId(id);
+          mapRef.current?.flyToEvent(id, { zoom: 16 });
+        }}
+        query={query}
+        onQueryChange={setQuery}
+        price={price}
+        onPriceChange={setPrice}
+        onlyLive={onlyLive}
+        onOnlyLiveChange={setOnlyLive}
+        onReset={handleReset}
+        activeFilters={activeFilters}
+        onShowInterests={() => setShowOnboarding(true)}
+        isLiveNow={isLiveNow}
+      />
+
       {/* Radial Filter Menu */}
       <RadialFilterMenu 
         activeFilters={activeFilters}
         onFilterToggle={handleFilterToggle}
       />
-
-      <ul style={{ listStyle: "none", padding: 0, marginTop: 12, display: "grid", gap: 8 }}>
-        {filteredEvents.slice(0, 20).map((ev) => {
-          const live = isLiveNow(ev);
-          const isSelected = selectedId === ev.id;
-          return (
-          <li 
-            key={ev.id} 
-            ref={(el) => { cardRefs.current[ev.id] = el; }}
-            onClick={() => onRowClick(ev.id)}
-            className={isSelected ? "event-card-selected" : ""}
-            style={{ 
-              border: isSelected ? "2px solid #1e90ff" : "1px solid #eee", 
-              borderRadius: 10, 
-              padding: 10,
-              cursor: "pointer",
-              backgroundColor: isSelected ? "#f0f8ff" : "transparent",
-              transition: "all 0.3s ease"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <strong>{ev.title}</strong>
-              {live && <span style={{ background: "#ff3b3b", color: "#fff", borderRadius: 8, padding: "2px 6px", fontSize: 11, fontWeight: 600 }}>LIVE</span>}
-            </div>
-            <div style={{ color: "#666", fontSize: 12 }}>
-              {ev.category} • {ev.price} {ev.time ? `• ${String(ev.time).slice(0, 16)}` : ""}
-            </div>
-            {ev.website && <a href={ev.website} target="_blank" rel="noreferrer">Open</a>}
-          </li>
-          );
-        })}
-      </ul>
     </div>
   );
 }
