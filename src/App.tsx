@@ -216,15 +216,6 @@ export default function App() {
     setActiveFilters(new Set());
   };
 
-  // Auto-fly to single result
-  useEffect(() => {
-    if (filteredEvents.length === 1) {
-      const id = filteredEvents[0].id;
-      setSelectedId(id);
-      mapRef.current?.flyToEvent(id, { zoom: 16 });
-    }
-  }, [filteredEvents]);
-
   return (
     <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden" }}>
       {/* Onboarding Modal */}
