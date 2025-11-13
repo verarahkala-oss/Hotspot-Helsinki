@@ -1248,6 +1248,58 @@ const MapGL = forwardRef<MapGLHandle, {
               }
             });
           }
+          
+          // Re-load map icons and add icon layers (async, but doesn't block)
+          loadMapIcons(map).then(() => {
+            if (!map.getLayer("event-icons")) {
+              map.addLayer({
+                id: "event-icons",
+                type: "symbol",
+                source: "events",
+                filter: ["all", ["!", ["has", "point_count"]], ["!=", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
+                layout: {
+                  "icon-image": ["get", "iconKey"],
+                  "icon-size": 0.6,
+                  "icon-allow-overlap": true,
+                  "icon-ignore-placement": true,
+                  "icon-anchor": "bottom"
+                }
+              });
+            }
+
+            if (!map.getLayer("event-icons-selected")) {
+              map.addLayer({
+                id: "event-icons-selected",
+                type: "symbol",
+                source: "events",
+                filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
+                layout: {
+                  "icon-image": ["get", "iconKey"],
+                  "icon-size": 0.7,
+                  "icon-allow-overlap": true,
+                  "icon-ignore-placement": true,
+                  "icon-anchor": "bottom"
+                }
+              });
+            }
+
+            if (!map.getLayer("event-icons-live")) {
+              map.addLayer({
+                id: "event-icons-live",
+                type: "symbol",
+                source: "events",
+                filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isLive"], true]],
+                layout: {
+                  "icon-image": ["get", "iconKey"],
+                  "icon-size": 0.65,
+                  "icon-allow-overlap": true,
+                  "icon-ignore-placement": true,
+                  "icon-anchor": "bottom"
+                }
+              });
+            }
+          }).catch(err => console.error("Failed to load icons after style change:", err));
+        }  // end of: if (!map.getSource("events") && data)
         
         if (map.getLayer("building")) {
           map.setPaintProperty("building", "fill-extrusion-color", isDark ? "#2a2a33" : "#e6e6ec");
@@ -1323,8 +1375,7 @@ const MapGL = forwardRef<MapGLHandle, {
           map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
           map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
         });
-      }
-    });
+      });  // closes map.once("styledata")
     }, 50); // 50ms debounce
     
     return () => {
