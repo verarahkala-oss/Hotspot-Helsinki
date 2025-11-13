@@ -2,10 +2,18 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import MapGL, { MapGLHandle } from "./MapGL";
 import useDebounce from "./useDebounce";
 import { fetchEvents, type LinkedEvent } from "./utils/fetchEvents";
-import RadialFilterMenu, { FILTER_OPTIONS } from "../components/RadialFilterMenu";
 import TonightsPicks from "../components/TonightsPicks";
 import OnboardingModal from "../components/OnboardingModal";
 import EventSidebar from "../components/EventSidebar";
+
+const FILTER_OPTIONS = [
+  { id: "music", label: "🎵 Music", keywords: ["music", "concert", "band", "dj", "jazz", "rock", "pop", "classical"] },
+  { id: "nightlife", label: "🍻 Nightlife", keywords: ["club", "bar", "nightlife", "party", "pub"] },
+  { id: "food", label: "🍔 Food & Drink", keywords: ["food", "restaurant", "cafe", "dining", "brunch", "dinner"] },
+  { id: "arts", label: "🎨 Arts & Culture", keywords: ["art", "museum", "gallery", "exhibition", "culture", "theater", "theatre"] },
+  { id: "sports", label: "⚽ Sports & Outdoors", keywords: ["sport", "fitness", "outdoor", "hiking", "running", "yoga"] },
+  { id: "family", label: "👨‍👩‍👧 Family", keywords: ["family", "kids", "children", "workshop"] },
+];
 
 type EventLite = LinkedEvent;
 type Bounds = { minLon: number; minLat: number; maxLon: number; maxLat: number };
@@ -385,12 +393,6 @@ export default function App() {
         activeFilters={activeFilters}
         onShowInterests={() => setShowOnboarding(true)}
         isLiveNow={isLiveNow}
-      />
-
-      {/* Radial Filter Menu */}
-      <RadialFilterMenu 
-        activeFilters={activeFilters}
-        onFilterToggle={handleFilterToggle}
       />
     </div>
   );
