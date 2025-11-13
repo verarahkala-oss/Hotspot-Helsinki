@@ -356,30 +356,82 @@ const MapGL = forwardRef<MapGLHandle, {
         }, 500);
       }
       
-      // Clustering source
+      // Clustering source with better configuration
       map.addSource("events", {
         type: "geojson",
         data: geo,
         cluster: true,
-        clusterRadius: 40,
-        clusterMaxZoom: 14
+        clusterRadius: 60,        // Increased for better clustering
+        clusterMaxZoom: 16,       // Cluster up to zoom 16 (was 14)
+        clusterProperties: {
+          // Count events by category for cluster breakdown
+          "music": ["+", ["case", ["==", ["get", "category"], "music"], 1, 0]],
+          "food": ["+", ["case", ["==", ["get", "category"], "food"], 1, 0]],
+          "arts": ["+", ["case", ["==", ["get", "category"], "arts"], 1, 0]],
+          "sports": ["+", ["case", ["==", ["get", "category"], "sports"], 1, 0]],
+          "nightlife": ["+", ["case", ["==", ["get", "category"], "nightlife"], 1, 0]],
+          "family": ["+", ["case", ["==", ["get", "category"], "family"], 1, 0]],
+          "tech": ["+", ["case", ["==", ["get", "category"], "tech"], 1, 0]]
+        } as any
       });
 
-      // Cluster circles (soft gray)
+      // Large clusters (200+ events) - biggest circles
       map.addLayer({
-        id: "clusters",
+        id: "clusters-large",
         type: "circle",
         source: "events",
-        filter: ["has", "point_count"],
+        filter: ["all", ["has", "point_count"], [">=", ["get", "point_count"], 200]],
         paint: {
           "circle-color": "#e8e8ee",
-          "circle-radius": ["step", ["get", "point_count"], 16, 50, 22, 200, 28],
+          "circle-radius": 38,
           "circle-stroke-color": "#cfcfda",
-          "circle-stroke-width": 1
+          "circle-stroke-width": 2
         }
       });
 
-      // Cluster labels
+      // Medium clusters (50-199 events)
+      map.addLayer({
+        id: "clusters-medium",
+        type: "circle",
+        source: "events",
+        filter: ["all", ["has", "point_count"], [">=", ["get", "point_count"], 50], ["<", ["get", "point_count"], 200]],
+        paint: {
+          "circle-color": "#e8e8ee",
+          "circle-radius": 28,
+          "circle-stroke-color": "#cfcfda",
+          "circle-stroke-width": 2
+        }
+      });
+
+      // Small clusters (10-49 events)
+      map.addLayer({
+        id: "clusters-small",
+        type: "circle",
+        source: "events",
+        filter: ["all", ["has", "point_count"], [">=", ["get", "point_count"], 10], ["<", ["get", "point_count"], 50]],
+        paint: {
+          "circle-color": "#e8e8ee",
+          "circle-radius": 22,
+          "circle-stroke-color": "#cfcfda",
+          "circle-stroke-width": 2
+        }
+      });
+
+      // Tiny clusters (2-9 events) - show category hints with colored segments
+      map.addLayer({
+        id: "clusters-tiny",
+        type: "circle",
+        source: "events",
+        filter: ["all", ["has", "point_count"], ["<", ["get", "point_count"], 10]],
+        paint: {
+          "circle-color": "#e8e8ee",
+          "circle-radius": 18,
+          "circle-stroke-color": "#cfcfda",
+          "circle-stroke-width": 2
+        }
+      });
+
+      // Cluster count labels
       map.addLayer({
         id: "cluster-count",
         type: "symbol",
@@ -387,9 +439,20 @@ const MapGL = forwardRef<MapGLHandle, {
         filter: ["has", "point_count"],
         layout: {
           "text-field": ["get", "point_count_abbreviated"],
-          "text-size": 12
+          "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+          "text-size": [
+            "step",
+            ["get", "point_count"],
+            13,    // <50 events
+            50, 15,  // 50-199
+            200, 18  // 200+
+          ]
         },
-        paint: { "text-color": "#333" }
+        paint: { 
+          "text-color": "#333",
+          "text-halo-color": "#fff",
+          "text-halo-width": 1
+        }
       });
 
       // Unclustered hotspots with category-based colors and size by distance
@@ -513,12 +576,17 @@ const MapGL = forwardRef<MapGLHandle, {
       }
 
       // Click: cluster → zoom in; point → popup
-      map.on("click", "clusters", (e:any) => {
-        const features = map.queryRenderedFeatures(e.point, { layers: ["clusters"] });
-        const clusterId = features[0].properties.cluster_id;
-        (map.getSource("events") as any).getClusterExpansionZoom(clusterId, (err: any, z: number) => {
-          if (err) return;
-          map.easeTo({ center: (features[0].geometry as any).coordinates, zoom: z });
+      const clusterLayers = ["clusters-large", "clusters-medium", "clusters-small", "clusters-tiny"];
+      
+      clusterLayers.forEach(layerId => {
+        map.on("click", layerId, (e:any) => {
+          const features = map.queryRenderedFeatures(e.point, { layers: [layerId] });
+          if (!features.length) return;
+          const clusterId = features[0].properties.cluster_id;
+          (map.getSource("events") as any).getClusterExpansionZoom(clusterId, (err: any, z: number) => {
+            if (err) return;
+            map.easeTo({ center: (features[0].geometry as any).coordinates, zoom: z + 0.5, duration: 500 });
+          });
         });
       });
 
@@ -565,7 +633,7 @@ const MapGL = forwardRef<MapGLHandle, {
       });
 
       // Cursor feedback
-      ["clusters", "unclustered", "unclustered-selected", "live-dot"].forEach((layer) => {
+      ["clusters-large", "clusters-medium", "clusters-small", "clusters-tiny", "unclustered", "unclustered-selected", "live-dot"].forEach((layer) => {
         map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
         map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
       });
@@ -870,12 +938,16 @@ const MapGL = forwardRef<MapGLHandle, {
           map.setPaintProperty("building", "fill-extrusion-opacity", isDark ? 0.8 : 0.7);
         }
         
-        map.on("click", "clusters", (ev:any) => {
-          const features = map.queryRenderedFeatures(ev.point, { layers: ["clusters"] });
-          const clusterId = features[0].properties.cluster_id;
-          (map.getSource("events") as any).getClusterExpansionZoom(clusterId, (err: any, z: number) => {
-            if (err) return;
-            map.easeTo({ center: (features[0].geometry as any).coordinates, zoom: z });
+        const clusterLayersTheme = ["clusters-large", "clusters-medium", "clusters-small", "clusters-tiny", "clusters"];
+        clusterLayersTheme.forEach(layerId => {
+          map.on("click", layerId, (ev:any) => {
+            const features = map.queryRenderedFeatures(ev.point, { layers: [layerId] });
+            if (!features.length) return;
+            const clusterId = features[0].properties.cluster_id;
+            (map.getSource("events") as any).getClusterExpansionZoom(clusterId, (err: any, z: number) => {
+              if (err) return;
+              map.easeTo({ center: (features[0].geometry as any).coordinates, zoom: z + 0.5, duration: 500 });
+            });
           });
         });
         
@@ -918,7 +990,7 @@ const MapGL = forwardRef<MapGLHandle, {
           }
         });
         
-        ["clusters", "unclustered", "unclustered-selected", "live-dot"].forEach((layer) => {
+        ["clusters-large", "clusters-medium", "clusters-small", "clusters-tiny", "clusters", "unclustered", "unclustered-selected", "live-dot"].forEach((layer) => {
           map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
           map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
         });
@@ -1064,12 +1136,16 @@ const MapGL = forwardRef<MapGLHandle, {
             map.setPaintProperty("building", "fill-extrusion-opacity", isDark ? 0.8 : 0.7);
           }
           
-          map.on("click", "clusters", (ev:any) => {
-            const features = map.queryRenderedFeatures(ev.point, { layers: ["clusters"] });
-            const clusterId = features[0].properties.cluster_id;
-            (map.getSource("events") as any).getClusterExpansionZoom(clusterId, (err: any, z: number) => {
-              if (err) return;
-              map.easeTo({ center: (features[0].geometry as any).coordinates, zoom: z });
+          const clusterLayersTheme2 = ["clusters-large", "clusters-medium", "clusters-small", "clusters-tiny", "clusters"];
+          clusterLayersTheme2.forEach(layerId => {
+            map.on("click", layerId, (ev:any) => {
+              const features = map.queryRenderedFeatures(ev.point, { layers: [layerId] });
+              if (!features.length) return;
+              const clusterId = features[0].properties.cluster_id;
+              (map.getSource("events") as any).getClusterExpansionZoom(clusterId, (err: any, z: number) => {
+                if (err) return;
+                map.easeTo({ center: (features[0].geometry as any).coordinates, zoom: z + 0.5, duration: 500 });
+              });
             });
           });
           
@@ -1112,7 +1188,7 @@ const MapGL = forwardRef<MapGLHandle, {
             }
           });
           
-          ["clusters", "unclustered", "unclustered-selected", "live-dot"].forEach((layer) => {
+          ["clusters-large", "clusters-medium", "clusters-small", "clusters-tiny", "clusters", "unclustered", "unclustered-selected", "live-dot"].forEach((layer) => {
             map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
             map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
           });
