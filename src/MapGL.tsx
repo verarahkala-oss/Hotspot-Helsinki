@@ -1266,7 +1266,7 @@ const MapGL = forwardRef<MapGLHandle, {
               id: "unclustered", 
               type: "circle", 
               source: "events", 
-              filter: ["all", ["!",["has","point_count"]], ["!=", ["get", "id"], ["literal", selectedEventId ?? "___none___"]]] as any,
+              filter: ["all", ["!",["has","point_count"]], ["!=", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]] as any,
               paint: { 
                 "circle-color":"#ff3b3b",
                 "circle-radius":6,
@@ -1281,7 +1281,7 @@ const MapGL = forwardRef<MapGLHandle, {
               id: "unclustered-selected", 
               type: "circle", 
               source: "events", 
-              filter: ["all", ["!",["has","point_count"]], ["==", ["get", "id"], ["literal", selectedEventId ?? "___none___"]]] as any,
+              filter: ["all", ["!",["has","point_count"]], ["==", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]] as any,
               paint: { 
                 "circle-color":"#ff3b3b",
                 "circle-radius":8,
