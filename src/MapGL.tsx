@@ -19,6 +19,24 @@ type Ev = {
 };
 type Bounds = { minLon:number; minLat:number; maxLon:number; maxLat:number };
 
+function formatEventTime(timeStr?: string): string {
+  if (!timeStr) return "";
+  
+  // If it's the default all-day format (00:00-23:59 or similar), don't show time
+  if (timeStr.includes("00:00") && timeStr.includes("23:59")) {
+    return "All day";
+  }
+  if (timeStr.includes("00.00") && timeStr.includes("23.59")) {
+    return "All day";
+  }
+  if (timeStr.includes("00:01") && timeStr.includes("23:59")) {
+    return "All day";
+  }
+  
+  // Return the time, but limit to reasonable length
+  return timeStr.slice(0, 16);
+}
+
 function isLiveNow(e: Ev, now = Date.now()) {
   const s = e.start ? Date.parse(e.start) : NaN;
   const hasEnd = !!e.end;
@@ -101,6 +119,9 @@ const MapGL = forwardRef<MapGLHandle, {
       ? `<span style="background:#ff3b3b;color:#fff;border-radius:8px;padding:2px 6px;font-size:11px;margin-left:6px;font-weight:600">LIVE NOW</span>` 
       : "";
     
+    const formattedTime = formatEventTime(properties.time);
+    const timeDisplay = formattedTime ? ` • ${formattedTime}` : "";
+    
     // Create popup container
     const popupContainer = document.createElement("div");
     popupContainer.style.minWidth = "220px";
@@ -109,7 +130,7 @@ const MapGL = forwardRef<MapGLHandle, {
     popupContainer.innerHTML = `
       <div>
         <strong>${properties.title || "Event"}</strong>${badge}
-        <div style="font-size:12px;color:#666;margin-top:4px">${properties.category} • ${properties.price}${properties.time ? " • " + String(properties.time).slice(0,16) : ""}</div>
+        <div style="font-size:12px;color:#666;margin-top:4px">${properties.category} • ${properties.price}${timeDisplay}</div>
         ${properties.website ? `<div style="margin-top:6px"><a href="${properties.website}" target="_blank" rel="noreferrer" style="color:#007aff">More Info</a></div>` : ""}
       </div>
       <div id="venue-details-container"></div>
