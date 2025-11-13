@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import { SkeletonLoader } from "./SkeletonLoader";
 
 type EventLite = {
   id: string;
@@ -42,6 +43,9 @@ interface EventSidebarProps {
   distanceUnit: "km" | "miles";
   onDistanceUnitChange: (unit: "km" | "miles") => void;
   onApplyPreset: (preset: "tonight" | "weekend" | "free" | "near-me") => void;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 export default function EventSidebar({
@@ -71,6 +75,9 @@ export default function EventSidebar({
   distanceUnit,
   onDistanceUnitChange,
   onApplyPreset,
+  loading = false,
+  error = null,
+  onRetry,
 }: EventSidebarProps) {
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
@@ -115,7 +122,7 @@ export default function EventSidebar({
           backgroundColor: "#fff",
           boxShadow: "-4px 0 24px rgba(0, 0, 0, 0.15)",
           transform: isOpen ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
           zIndex: 1000,
           display: "flex",
           flexDirection: "column",
@@ -300,8 +307,57 @@ export default function EventSidebar({
             padding: "16px",
           }}
         >
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
-            {events.slice(0, 50).map((ev) => {
+          {/* Error message with retry button */}
+          {error && (
+            <div
+              style={{
+                backgroundColor: "#fff3cd",
+                border: "1px solid #ffc107",
+                borderRadius: 12,
+                padding: "16px",
+                marginBottom: "16px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, color: "#856404", marginBottom: 4 }}>
+                  ⚠️ Connection Issue
+                </div>
+                <div style={{ fontSize: 14, color: "#856404" }}>
+                  {error}
+                </div>
+              </div>
+              {onRetry && (
+                <button
+                  onClick={onRetry}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#667eea",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Show skeleton loader when loading and no events */}
+          {loading && events.length === 0 ? (
+            <div style={{ display: "grid", gap: 12 }}>
+              <SkeletonLoader count={5} />
+            </div>
+          ) : (
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
+              {events.slice(0, 50).map((ev, index) => {
               const live = isLiveNow(ev);
               const isSelected = selectedId === ev.id;
               return (
@@ -321,6 +377,9 @@ export default function EventSidebar({
                     boxShadow: isSelected 
                       ? "0 8px 24px rgba(102, 126, 234, 0.25)" 
                       : "0 2px 8px rgba(0, 0, 0, 0.08)",
+                    animation: "fadeInUp 0.5s ease-out forwards",
+                    animationDelay: `${index * 0.03}s`,
+                    opacity: 0,
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected) {
@@ -414,8 +473,9 @@ export default function EventSidebar({
               );
             })}
           </ul>
+          )}
 
-          {events.length === 0 && (
+          {!loading && events.length === 0 && (
             <div
               style={{
                 textAlign: "center",

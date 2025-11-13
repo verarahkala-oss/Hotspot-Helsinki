@@ -115,6 +115,71 @@
   animation: cardPulse 1.2s ease-out 2;
 }
 
+/* Marker bounce animation when selected */
+@keyframes markerBounce {
+  0% { 
+    transform: translateY(0) scale(1);
+  }
+  20% { 
+    transform: translateY(-15px) scale(1.1);
+  }
+  40% { 
+    transform: translateY(0) scale(1);
+  }
+  60% { 
+    transform: translateY(-8px) scale(1.05);
+  }
+  80% { 
+    transform: translateY(0) scale(1);
+  }
+  100% { 
+    transform: translateY(0) scale(1);
+  }
+}
+
+.marker-bounce {
+  animation: markerBounce 0.6s cubic-bezier(0.28, 0.84, 0.42, 1);
+}
+
+/* Fade in animation for event cards */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.event-card-enter {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Spring animation for sidebar */
+@keyframes springSlideIn {
+  0% {
+    transform: translateX(100%);
+  }
+  60% {
+    transform: translateX(-10px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Pulse animation for skeleton loaders */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
 /* Hover tooltip styling - lightweight and fast */
 .hover-tooltip .maplibregl-popup-content {
   padding: 8px 10px;

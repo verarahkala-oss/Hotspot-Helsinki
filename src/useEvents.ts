@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "./constants";
 import { useDebounce } from "./hooks/useDebounce";
+import { cacheEvents, getCachedEvents, isCacheFresh } from "./utils/eventCache";
 
 interface EventData {
   updatedAt: string;
@@ -47,10 +48,22 @@ export function useEvents(options: UseEventsOptions = {}): UseEventsResult {
   // Debounce bbox changes to avoid too many requests while panning
   const debouncedBBox = useDebounce(options.bbox, 500);
 
+  // Load cached events on mount
+  useEffect(() => {
+    const cached = getCachedEvents();
+    if (cached && cached.length > 0) {
+      setData(cached);
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        setLoading(true);
+        // Only show loading spinner if we don't have cached data
+        if (!data || data.length === 0) {
+          setLoading(true);
+        }
         setError(null);
 
         // Build query params
@@ -82,10 +95,25 @@ export function useEvents(options: UseEventsOptions = {}): UseEventsResult {
         }
         
         // Extract the data array from the response
-        setData(json.data || []);
+        const events = json.data || [];
+        setData(events);
+        
+        // Cache the successful response
+        if (events.length > 0) {
+          cacheEvents(events);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch events");
-        setData(null);
+        const errorMsg = err instanceof Error ? err.message : "Failed to fetch events";
+        setError(errorMsg);
+        
+        // Try to use cached data if fetch fails
+        const cached = getCachedEvents();
+        if (cached && cached.length > 0) {
+          setData(cached);
+          setError(errorMsg + " (showing cached data)");
+        } else {
+          setData(null);
+        }
       } finally {
         setLoading(false);
       }

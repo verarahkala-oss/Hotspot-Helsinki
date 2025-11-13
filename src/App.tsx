@@ -7,6 +7,7 @@ import OnboardingModal from "../components/OnboardingModal";
 import EventSidebar from "../components/EventSidebar";
 import BottomNavigation, { NavTab } from "../components/BottomNavigation";
 import FilterBar, { QuickFilter } from "../components/FilterBar";
+import { cacheEvents, getCachedEvents } from "./utils/eventCache";
 
 const FILTER_OPTIONS = [
   { id: "music", label: "🎵 Music", keywords: ["music", "concert", "band", "dj", "jazz", "rock", "pop", "classical"] },
@@ -191,20 +192,36 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     
+    // Load cached events first
+    const cached = getCachedEvents();
+    if (cached && cached.length > 0) {
+      setEvents(cached);
+      setLoading(false);
+    }
+    
     const fetchAndSetEvents = async () => {
       if (cancelled) return;
-      setLoading(true);
+      // Only show loading if we don't have cached data
+      if (!cached || cached.length === 0) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const liveEvents = await fetchEvents();
         if (!cancelled) {
           setEvents(liveEvents);
+          // Cache successful fetch
+          cacheEvents(liveEvents);
         }
       } catch (e: any) {
-        console.error("Failed to fetch events, using demo data:", e);
+        console.error("Failed to fetch events:", e);
         if (!cancelled) {
-          setError(e?.message || "Failed to load events");
-          setEvents(DEMO_EVENTS); // Fallback to demo events
+          const errorMsg = e?.message || "Failed to load events";
+          setError(cached && cached.length > 0 ? errorMsg + " (showing cached data)" : errorMsg);
+          // Keep cached events if available, otherwise use demo
+          if (!cached || cached.length === 0) {
+            setEvents(DEMO_EVENTS);
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -222,6 +239,24 @@ export default function App() {
       clearInterval(intervalId);
     };
   }, []); // Only run once on mount
+
+  // Retry function for manual refresh
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    fetchEvents()
+      .then((liveEvents) => {
+        setEvents(liveEvents);
+        cacheEvents(liveEvents);
+      })
+      .catch((e: any) => {
+        console.error("Retry failed:", e);
+        setError(e?.message || "Failed to load events");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
 
   // Filter events by query, price, category, bounds, radial filters, and LIVE status
   // Then score and sort by relevance
@@ -644,6 +679,9 @@ export default function App() {
         onShow3DBuildingsChange={setShow3DBuildings}
         distanceUnit={distanceUnit}
         onDistanceUnitChange={setDistanceUnit}
+        loading={loading}
+        error={error}
+        onRetry={handleRetry}
         onApplyPreset={(preset) => {
           if (preset === "tonight") {
             setOnlyLive(true);
