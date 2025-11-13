@@ -729,6 +729,68 @@ const MapGL = forwardRef<MapGLHandle, {
         map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
       });
 
+      // Hover tooltips for event markers (mini preview)
+      let hoverTooltip: maplibregl.Popup | null = null;
+      
+      const createHoverTooltip = (e: any, layerId: string) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: [layerId] });
+        if (!features.length || features[0].properties.point_count) return; // Skip clusters
+        
+        const p = features[0].properties;
+        const coords = (features[0].geometry as any).coordinates.slice();
+        
+        // Create lightweight tooltip HTML
+        const time = formatEventTime(p.time);
+        const priceIcon = p.price === "free" ? "🆓" : "💳";
+        const liveTag = p.isLive ? '<span style="background: #ff3b3b; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 4px;">LIVE</span>' : '';
+        
+        const tooltipHTML = `
+          <div style="font-size: 13px; max-width: 200px;">
+            <div style="font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+              ${p.title}${liveTag}
+            </div>
+            <div style="color: #666; font-size: 11px;">
+              ${time || p.category} ${priceIcon}
+            </div>
+            <div style="color: #999; font-size: 10px; margin-top: 4px; font-style: italic;">
+              Tap for details
+            </div>
+          </div>
+        `;
+        
+        // Remove existing hover tooltip
+        if (hoverTooltip) {
+          hoverTooltip.remove();
+        }
+        
+        // Create new hover tooltip
+        hoverTooltip = new maplibregl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: [0, -10],
+          className: 'hover-tooltip',
+          maxWidth: '250px'
+        })
+          .setLngLat(coords)
+          .setHTML(tooltipHTML)
+          .addTo(map);
+      };
+      
+      const removeHoverTooltip = () => {
+        if (hoverTooltip) {
+          hoverTooltip.remove();
+          hoverTooltip = null;
+        }
+      };
+      
+      // Add hover handlers to marker layers
+      ["unclustered", "unclustered-selected", "live-dot"].forEach((layer) => {
+        map.on("mouseenter", layer, (e) => createHoverTooltip(e, layer));
+        map.on("mousemove", layer, (e) => createHoverTooltip(e, layer)); // Update position on move
+        map.on("mouseleave", layer, removeHoverTooltip);
+        map.on("click", layer, removeHoverTooltip); // Remove on click to show full popup
+      });
+
       // Report bounds → parent (for bbox fetch)
       const emitBounds = () => {
         const b = map.getBounds();

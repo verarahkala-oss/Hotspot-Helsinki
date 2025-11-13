@@ -113,3 +113,28 @@
 .event-card-selected {
   animation: cardPulse 1.2s ease-out 2;
 }
+
+/* Hover tooltip styling - lightweight and fast */
+.hover-tooltip .maplibregl-popup-content {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.hover-tooltip .maplibregl-popup-tip {
+  border-top-color: rgba(255, 255, 255, 0.98);
+}
+
+@media (prefers-color-scheme: dark) {
+  .hover-tooltip .maplibregl-popup-content {
+    background: rgba(26, 26, 32, 0.98);
+    color: #eaeaea;
+  }
+  
+  .hover-tooltip .maplibregl-popup-tip {
+    border-top-color: rgba(26, 26, 32, 0.98);
+  }
+}
