@@ -189,14 +189,32 @@ async function fetchLinkedEvents(bounds) {
       
       const [lng, lat] = item.location.position.coordinates;
       
+      // Skip online/virtual events (check venue name and description)
+      const venueName = (item.location?.name?.fi || item.location?.name?.en || "").toLowerCase();
+      const description = (item.description?.fi || item.description?.en || "").toLowerCase();
+      const title = (item.name?.fi || item.name?.en || item.name?.sv || "").toLowerCase();
+      
+      if (
+        venueName.includes("internet") ||
+        venueName.includes("online") ||
+        venueName.includes("verkko") ||
+        description.includes("online-tapahtuma") ||
+        description.includes("online event") ||
+        description.includes("virtual event") ||
+        title.includes("online") ||
+        title.includes("verkossa")
+      ) {
+        continue;
+      }
+      
       // Filter by bounds if provided
       if (bounds) {
         const [minLng, minLat, maxLng, maxLat] = bounds;
         if (lng < minLng || lng > maxLng || lat < minLat || lat > maxLat) continue;
       }
       
-      const title = item.name?.fi || item.name?.en || item.name?.sv || "Event";
-      const description = item.description?.fi || item.description?.en || "";
+      const eventTitle = item.name?.fi || item.name?.en || item.name?.sv || "Event";
+      const eventDescription = item.description?.fi || item.description?.en || "";
       const keywords = (item.keywords || []).map(k => k.name?.fi || k.name?.en || "");
       const offers = item.offers || [];
       const priceType = offers.some(o => o.is_free) ? "free" : "paid";
@@ -204,8 +222,8 @@ async function fetchLinkedEvents(bounds) {
       events.push({
         id: `linkedevents_${item.id}`,
         source: "linkedevents",
-        title,
-        description,
+        title: eventTitle,
+        description: eventDescription,
         startTime: item.start_time,
         endTime: item.end_time || null,
         lat,
@@ -249,14 +267,32 @@ async function fetchMyHelsinkiEvents(bounds) {
       const loc = item.location || {};
       if (!loc.lat || !loc.lon) continue;
       
+      // Skip online/virtual events
+      const venueName = (loc.address?.street_address || "").toLowerCase();
+      const description = (item.description?.fi || item.description?.en || "").toLowerCase();
+      const title = (item.name?.fi || item.name?.en || "").toLowerCase();
+      
+      if (
+        venueName.includes("internet") ||
+        venueName.includes("online") ||
+        venueName.includes("verkko") ||
+        description.includes("online-tapahtuma") ||
+        description.includes("online event") ||
+        description.includes("virtual event") ||
+        title.includes("online") ||
+        title.includes("verkossa")
+      ) {
+        continue;
+      }
+      
       // Filter by bounds if provided
       if (bounds) {
         const [minLng, minLat, maxLng, maxLat] = bounds;
         if (loc.lon < minLng || loc.lon > maxLng || loc.lat < minLat || loc.lat > maxLat) continue;
       }
       
-      const title = item.name?.fi || item.name?.en || "Event";
-      const description = item.description?.fi || item.description?.en || "";
+      const eventTitle = item.name?.fi || item.name?.en || "Event";
+      const eventDescription = item.description?.fi || item.description?.en || "";
       const tags = (item.tags || []).map(t => t.name || "");
       const offers = item.offers || [];
       const priceType = offers.some(o => o.is_free) ? "free" : "paid";
@@ -268,8 +304,8 @@ async function fetchMyHelsinkiEvents(bounds) {
       events.push({
         id: `myhelsinki_${item.id}`,
         source: "myhelsinki",
-        title,
-        description,
+        title: eventTitle,
+        description: eventDescription,
         startTime: `${startDay}T00:00:00Z`, // MyHelsinki only provides date, not time
         endTime: item.event_dates?.ending_day ? `${item.event_dates.ending_day}T23:59:59Z` : null,
         lat: loc.lat,
