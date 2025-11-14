@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import MapGL, { MapGLHandle } from "./MapGL";
 import useDebounce from "./useDebounce";
 import { fetchEvents, type LinkedEvent } from "./utils/fetchEvents";
-import TonightsPicks from "../components/TonightsPicks";
 import OnboardingModal from "../components/OnboardingModal";
 import EventSidebar from "../components/EventSidebar";
 import BottomNavigation, { NavTab } from "../components/BottomNavigation";
@@ -698,15 +697,6 @@ export default function App() {
           to { transform: rotate(360deg); }
         }
       `}</style>
-
-      {/* Tonight's Picks Ribbon */}
-      <TonightsPicks 
-        events={filteredEvents} 
-        onEventClick={(id) => {
-          setSelectedId(id);
-          mapRef.current?.flyToEvent(id, { zoom: 16 });
-        }}
-      />
 
       {/* Map */}
       <MapGL 
