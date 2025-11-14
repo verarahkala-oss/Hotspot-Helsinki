@@ -526,13 +526,6 @@ const MapGL = forwardRef<MapGLHandle, {
         }, 500);
       }
       
-      // Load category icons before adding layers
-      loadMapIcons(map).then(() => {
-        console.log('Category icons loaded successfully');
-      }).catch((err) => {
-        console.error('Failed to load category icons:', err);
-      });
-      
       // Clustering source with better configuration
       map.addSource("events", {
         type: "geojson",
@@ -795,50 +788,57 @@ const MapGL = forwardRef<MapGLHandle, {
         }
       });
 
-      // CATEGORY ICON LAYERS - Show emoji/icon on top of markers
-      // Icon for regular (non-live, non-selected) events
-      map.addLayer({
-        id: "event-icons",
-        type: "symbol",
-        source: "events",
-        filter: ["all", ["!", ["has", "point_count"]], ["!=", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
-        layout: {
-          "icon-image": ["get", "iconKey"],
-          "icon-size": 0.6,
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-          "icon-anchor": "bottom"
-        }
-      });
+      // Load category icons BEFORE adding icon layers
+      loadMapIcons(map).then(() => {
+        console.log('Category icons loaded successfully');
+        
+        // CATEGORY ICON LAYERS - Show emoji/icon on top of markers
+        // Icon for regular (non-live, non-selected) events
+        map.addLayer({
+          id: "event-icons",
+          type: "symbol",
+          source: "events",
+          filter: ["all", ["!", ["has", "point_count"]], ["!=", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
+          layout: {
+            "icon-image": ["get", "iconKey"],
+            "icon-size": 0.6,
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            "icon-anchor": "bottom"
+          }
+        });
 
-      // Icon for selected events
-      map.addLayer({
-        id: "event-icons-selected",
-        type: "symbol",
-        source: "events",
-        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
-        layout: {
-          "icon-image": ["get", "iconKey"],
-          "icon-size": 0.7,
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-          "icon-anchor": "bottom"
-        }
-      });
+        // Icon for selected events
+        map.addLayer({
+          id: "event-icons-selected",
+          type: "symbol",
+          source: "events",
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], ["literal", selectedEventId ?? "___none___"]], ["!=", ["get", "isLive"], true]],
+          layout: {
+            "icon-image": ["get", "iconKey"],
+            "icon-size": 0.7,
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            "icon-anchor": "bottom"
+          }
+        });
 
-      // Icon for LIVE events
-      map.addLayer({
-        id: "event-icons-live",
-        type: "symbol",
-        source: "events",
-        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isLive"], true]],
-        layout: {
-          "icon-image": ["get", "iconKey"],
-          "icon-size": 0.65,
-          "icon-allow-overlap": true,
-          "icon-ignore-placement": true,
-          "icon-anchor": "bottom"
-        }
+        // Icon for LIVE events
+        map.addLayer({
+          id: "event-icons-live",
+          type: "symbol",
+          source: "events",
+          filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isLive"], true]],
+          layout: {
+            "icon-image": ["get", "iconKey"],
+            "icon-size": 0.65,
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            "icon-anchor": "bottom"
+          }
+        });
+      }).catch((err) => {
+        console.error('Failed to load category icons:', err);
       });
 
       // Start glow animation
