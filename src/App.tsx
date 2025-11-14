@@ -32,8 +32,18 @@ function isLiveNow(e: EventLite, now = Date.now()) {
   const hasEnd = !!e.end;
   const en = hasEnd ? Date.parse(e.end!) : (isFinite(s) ? s + 6*60*60*1000 : NaN); // +6h fallback
   
-  // Check if event is currently happening
-  if (!isFinite(s) || !isFinite(en) || s > now || now > en) {
+  // Check if start and end times are valid
+  if (!isFinite(s) || !isFinite(en)) {
+    return false;
+  }
+  
+  // Event hasn't started yet
+  if (s > now) {
+    return false;
+  }
+  
+  // Event has ended
+  if (now >= en) {
     return false;
   }
   
@@ -43,6 +53,7 @@ function isLiveNow(e: EventLite, now = Date.now()) {
     return false;
   }
   
+  // Event is currently happening
   return true;
 }
 
