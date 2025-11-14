@@ -24,16 +24,23 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:4173',
   'https://hotspot-helsinki.vercel.app',
-  'https://helsinki-hotspots.vercel.app',
-  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
-].filter(Boolean);
+  'https://helsinki-hotspots.vercel.app'
+];
+
+// Also allow all Vercel preview deployments
+const isVercelPreview = (origin) => {
+  return origin && (
+    origin.includes('.vercel.app') || 
+    origin.includes('v3ras-projects.vercel.app')
+  );
+};
 
 export default async function handler(req, res) {
   // CORS with origin validation
   const origin = req.headers.origin || req.headers.referer;
   const isAllowedOrigin = ALLOWED_ORIGINS.some(allowed => 
     origin && origin.startsWith(allowed)
-  );
+  ) || isVercelPreview(origin);
   
   if (isAllowedOrigin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
