@@ -84,7 +84,7 @@ export default function EventSidebar({
   
   // Track liked events for UI updates
   const [likedEvents, setLikedEvents] = useState<Set<string>>(() => {
-    const liked = require("../src/utils/personalization").getLikedEvents();
+    const liked = getLikedEvents();
     return new Set(liked.map((e: any) => e.id));
   });
 
