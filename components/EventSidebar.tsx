@@ -17,7 +17,7 @@ type EventLite = {
 
 interface EventSidebarProps {
   isOpen: boolean;
-  view: "events" | "settings";
+  view: "events" | "settings" | "profile";
   onClose: () => void;
   events: EventLite[];
   selectedId?: string;
@@ -150,7 +150,7 @@ export default function EventSidebar({
           }}
         >
           <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 700, color: "#1a1a1a" }}>
-            {view === "events" ? `Events (${events.length})` : "Settings"}
+            {view === "events" ? `Events (${events.length})` : view === "settings" ? "Settings" : "Profile"}
           </h2>
           <button
             onClick={onClose}
@@ -559,8 +559,8 @@ export default function EventSidebar({
           )}
         </div>
           </>
-        ) : (
-          /* Settings View */
+        ) : view === "settings" ? (
+          /* Settings View - Map Configuration */
           <div
             style={{
               flex: 1,
@@ -836,6 +836,78 @@ export default function EventSidebar({
                   Near Me
                 </button>
               </div>
+            </div>
+
+          </div>
+        ) : (
+          /* Profile View - User Preferences & Privacy */
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+            }}
+          >
+            {/* Liked Events Section */}
+            <div>
+              <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block", fontWeight: 600 }}>
+                💙 Liked Events
+              </label>
+              <div
+                style={{
+                  padding: "16px",
+                  background: "#f8f9fa",
+                  borderRadius: 12,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <div style={{ fontSize: "24px", fontWeight: 700, color: "#667eea", marginBottom: 8 }}>
+                  {likedEvents.size}
+                </div>
+                <div style={{ fontSize: 13, color: "#666" }}>
+                  {likedEvents.size === 0 ? "No liked events yet" : likedEvents.size === 1 ? "event saved" : "events saved"}
+                </div>
+              </div>
+            </div>
+
+            {/* Active Interests */}
+            <div>
+              <label style={{ fontSize: "12px", color: "#666", marginBottom: "6px", display: "block", fontWeight: 600 }}>
+                🎯 Your Interests
+              </label>
+              <button
+                onClick={onShowInterests}
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: 8,
+                  border: "1px solid #e0e0e0",
+                  background: "#fff",
+                  color: "#333",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  width: "100%",
+                  textAlign: "left",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f0f4ff";
+                  e.currentTarget.style.borderColor = "#667eea";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#fff";
+                  e.currentTarget.style.borderColor = "#e0e0e0";
+                }}
+              >
+                <span>{activeFilters.size > 0 ? `${activeFilters.size} interests active` : "Edit interests"}</span>
+                <span style={{ fontSize: "16px" }}>→</span>
+              </button>
             </div>
 
             {/* Privacy & Data Section */}

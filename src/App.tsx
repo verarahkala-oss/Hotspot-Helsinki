@@ -143,7 +143,7 @@ export default function App() {
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarView, setSidebarView] = useState<"events" | "settings">("events");
+  const [sidebarView, setSidebarView] = useState<"events" | "settings" | "profile">("events");
   const [heatmapMode, setHeatmapMode] = useState(false);
   const [show3DBuildings, setShow3DBuildings] = useState(true);
   const [distanceUnit, setDistanceUnit] = useState<"km" | "miles">("km");
@@ -863,11 +863,11 @@ export default function App() {
             setSidebarView("events");
             setSidebarOpen(true);
           } else if (tab === "saved") {
-            // Future: show saved events
-            setSidebarView("events");
+            // Show saved/liked events
+            setSidebarView("profile");
             setSidebarOpen(true);
           } else if (tab === "profile") {
-            setSidebarView("settings");
+            setSidebarView("profile");
             setSidebarOpen(true);
           }
         }}
