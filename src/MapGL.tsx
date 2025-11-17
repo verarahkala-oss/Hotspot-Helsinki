@@ -1244,7 +1244,7 @@ const MapGL = forwardRef<MapGLHandle, {
         // When theme changes, the style reloads and removes all layers (but source might persist)
         // We need to re-add both source and layers
         if (!map.getSource("events") && data) {
-          console.log('Adding source and layers for the first time');
+          console.log('Adding source for the first time');
           map.addSource("events", { 
             type: "geojson", 
             data, 
@@ -1257,15 +1257,8 @@ const MapGL = forwardRef<MapGLHandle, {
           (map.getSource("events") as any).setData(data);
         }
         
-        // Always add layers if they don't exist (theme change removes them)
+        // Always re-add layers if they don't exist (theme change removes them)
         if (data) {
-          map.addSource("events", { 
-            type: "geojson", 
-            data, 
-            cluster: true, 
-            clusterRadius: 40, 
-            clusterMaxZoom: 14 
-          });
           
           if (!map.getLayer("clusters")) {
             map.addLayer({ 
