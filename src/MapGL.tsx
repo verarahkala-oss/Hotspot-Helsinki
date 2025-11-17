@@ -1240,7 +1240,25 @@ const MapGL = forwardRef<MapGLHandle, {
     
       map.once("styledata", () => {
         console.log('Style loaded, re-adding layers. Source exists:', !!map.getSource("events"), 'Data available:', !!data, 'Data features:', data?.features?.length);
+        
+        // When theme changes, the style reloads and removes all layers (but source might persist)
+        // We need to re-add both source and layers
         if (!map.getSource("events") && data) {
+          console.log('Adding source and layers for the first time');
+          map.addSource("events", { 
+            type: "geojson", 
+            data, 
+            cluster: true, 
+            clusterRadius: 40, 
+            clusterMaxZoom: 14 
+          });
+        } else if (map.getSource("events") && data) {
+          console.log('Source exists, updating data');
+          (map.getSource("events") as any).setData(data);
+        }
+        
+        // Always add layers if they don't exist (theme change removes them)
+        if (data) {
           map.addSource("events", { 
             type: "geojson", 
             data, 
@@ -1429,7 +1447,7 @@ const MapGL = forwardRef<MapGLHandle, {
               });
             }
           }).catch(err => console.error("Failed to load icons after style change:", err));
-        }  // end of: if (!map.getSource("events") && data)
+        }  // end of: if (data)
         
         if (map.getLayer("building")) {
           map.setPaintProperty("building", "fill-extrusion-color", isDark ? "#2a2a33" : "#e6e6ec");
